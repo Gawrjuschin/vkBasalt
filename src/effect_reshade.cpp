@@ -371,8 +371,8 @@ namespace vkBasalt
         Logger::debug("after writing ImageSamplerDescriptorSets");
 
         bool firstTimeStencilAccess = true; // Used to clear the sttencil attachment on the first time
-
-        for (bool outputToBackBuffer = outputWrites % 2 == 0; auto& pass : module.techniques[0].passes)
+        bool outputToBackBuffer = outputWrites % 2 == 0;
+        for (auto& pass : module.techniques[0].passes)
         {
             std::vector<VkAttachmentReference>               attachmentReferences;
             std::vector<VkAttachmentDescription>             attachmentDescriptions;
@@ -563,7 +563,8 @@ namespace vkBasalt
             std::vector<VkSpecializationMapEntry> specMapEntrys;
             std::vector<char>                     specData;
 
-            for (uint32_t specId = 0, offset = 0; auto &opt : module.spec_constants)
+            uint32_t specId = 0, offset = 0;
+            for (auto &opt : module.spec_constants)
             {
                 if (!opt.name.empty())
                 {

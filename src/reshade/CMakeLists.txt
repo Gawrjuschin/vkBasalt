@@ -7,20 +7,25 @@ target_sources(
   PUBLIC FILE_SET
          HEADERS
          FILES
-         effect_codegen.hpp
-         effect_expression.hpp
-         effect_lexer.hpp
-         effect_module.hpp
-         effect_parser.hpp
-         effect_preprocessor.hpp
-         effect_symbol_table.hpp
-         effect_token.hpp
-  PRIVATE effect_codegen_spirv.cpp
-          effect_expression.cpp
-          effect_lexer.cpp
-          effect_parser.cpp
-          effect_preprocessor.cpp
-          effect_symbol_table_intrinsics.inl
-          effect_symbol_table.cpp
-          GLSL.std.450.h
-          spirv.hpp)
+         ${CMAKE_CURRENT_LIST_DIR}/GLSL.std.450.h
+         ${CMAKE_CURRENT_LIST_DIR}/spirv.hpp
+         ${CMAKE_CURRENT_LIST_DIR}/effect_codegen.hpp
+         ${CMAKE_CURRENT_LIST_DIR}/effect_expression.hpp
+         ${CMAKE_CURRENT_LIST_DIR}/effect_lexer.hpp
+         ${CMAKE_CURRENT_LIST_DIR}/effect_module.hpp
+         ${CMAKE_CURRENT_LIST_DIR}/effect_parser.hpp
+         ${CMAKE_CURRENT_LIST_DIR}/effect_preprocessor.hpp
+         ${CMAKE_CURRENT_LIST_DIR}/effect_symbol_table.hpp
+         ${CMAKE_CURRENT_LIST_DIR}/effect_token.hpp
+  PRIVATE ${CMAKE_CURRENT_LIST_DIR}/effect_codegen_spirv.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_expression.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_lexer.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_parser.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_preprocessor.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_symbol_table_intrinsics.inl
+          ${CMAKE_CURRENT_LIST_DIR}/effect_symbol_table.cpp)
+
+set_target_properties(vkBasalt_reshade PROPERTIES POSITION_INDEPENDENT_CODE
+                                                  TRUE)
+
+target_link_libraries(vkBasalt_reshade PUBLIC SPIRV-Headers::SPIRV-Headers)

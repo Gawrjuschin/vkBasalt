@@ -45,7 +45,8 @@ namespace vkBasalt
             default: break;
         }
         std::string magicString = "";
-        for (bool first = true; auto& magicNumber : magicNumbers)
+        bool first = true;
+        for (auto& magicNumber : magicNumbers)
         {
             if (!first)
             {

@@ -1,87 +1,104 @@
 cmake_minimum_required(VERSION 3.31)
 
-add_library(vkBasalt SHARED)
-
 add_subdirectory(reshade/)
 add_subdirectory(shader/)
 
+# TODO: better place
+add_library(vkBasalt_X11input OBJECT)
+target_sources(
+  vkBasalt_X11input
+  PRIVATE ${CMAKE_CURRENT_LIST_DIR}/keyboard_input_x11.cpp
+  PUBLIC FILE_SET HEADERS FILES
+         ${CMAKE_CURRENT_LIST_DIR}/keyboard_input_x11.hpp)
+target_link_libraries(vkBasalt_X11input PUBLIC X11::X11)
+
+add_library(vkBasalt SHARED)
+
 target_sources(
   vkBasalt
-  PRIVATE AreaTex.h
-          basalt.cpp
-          buffer.hpp
-          buffer.cpp
-          command_buffer.hpp
-          command_buffer.cpp
-          config.hpp
-          config.cpp
-          descriptor_set.hpp
-          descriptor_set.cpp
-          effect_cas.hpp
-          effect_cas.cpp
-          effect_deband.hpp
-          effect_deband.cpp
-          effect_dls.hpp
-          effect_dls.cpp
-          effect_fxaa.hpp
-          effect_fxaa.cpp
-          effect_lut.hpp
-          effect_lut.cpp
-          effect_reshade.hpp
-          effect_reshade.cpp
-          effect_simple.hpp
-          effect_simple.cpp
-          effect_smaa.hpp
-          effect_smaa.cpp
-          effect_transfer.hpp
-          effect_transfer.cpp
-          effect.hpp
-          effect.cpp
-          fake_swapchain.hpp
-          fake_swapchain.cpp
-          format.hpp
-          format.cpp
-          framebuffer.hpp
-          framebuffer.cpp
-          graphics_pipeline.hpp
-          graphics_pipeline.cpp
-          image_view.hpp
-          image_view.cpp
-          image.hpp
-          image.hpp
-          keyboard_input_x11.hpp
-          keyboard_input_x11.cpp
-          keyboard_input.hpp
-          keyboard_input.cpp
-          logger.hpp
-          logger.cpp
-          logical_device.hpp
-          logical_swapchain.hpp
-          logical_swapchain.cpp
-          lut_cube.hpp
-          lut_cube.cpp
-          memory.hpp
-          memory.cpp
-          renderpass.hpp
-          renderpass.cpp
-          reshade_uniforms.hpp
-          reshade_uniforms.cpp
-          sampler.hpp
-          sampler.cpp
-          SearchTex.h
-          shader_sources.hpp
-          shader.hpp
-          shader.cpp
-          stb_image_dds.h
-          stb_image_resize.h
-          stb_image_resize.c
-          stb_image.h
-          stb_image.c
-          util.hpp
-          util.cpp
-          vkdispatch.hpp
-          vkdispatch.cpp
-          vkfuncs.hpp
-          vulkan_include.hpp)
+  PRIVATE ${CMAKE_CURRENT_LIST_DIR}/AreaTex.h
+          ${CMAKE_CURRENT_LIST_DIR}/basalt.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/buffer.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/buffer.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/command_buffer.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/command_buffer.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/config.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/config.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/descriptor_set.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/descriptor_set.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_cas.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_cas.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_deband.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_deband.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_dls.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_dls.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_fxaa.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_fxaa.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_lut.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_lut.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_reshade.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_reshade.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_simple.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_simple.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_smaa.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_smaa.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_transfer.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect_transfer.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/effect.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/fake_swapchain.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/fake_swapchain.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/format.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/format.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/framebuffer.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/framebuffer.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/graphics_pipeline.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/graphics_pipeline.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/image_view.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/image_view.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/image.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/image.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/keyboard_input.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/keyboard_input.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/logger.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/logger.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/logical_device.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/logical_swapchain.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/logical_swapchain.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/lut_cube.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/lut_cube.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/memory.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/memory.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/renderpass.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/renderpass.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/reshade_uniforms.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/reshade_uniforms.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/sampler.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/sampler.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/SearchTex.h
+          ${CMAKE_CURRENT_LIST_DIR}/shader_sources.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/shader.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/shader.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/stb_image_dds.h
+          ${CMAKE_CURRENT_LIST_DIR}/stb_image_resize.h
+          ${CMAKE_CURRENT_LIST_DIR}/stb_image_resize.c
+          ${CMAKE_CURRENT_LIST_DIR}/stb_image.h
+          ${CMAKE_CURRENT_LIST_DIR}/stb_image.c
+          ${CMAKE_CURRENT_LIST_DIR}/util.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/util.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/vkdispatch.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/vkdispatch.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/vkfuncs.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/vulkan_include.hpp)
 
-target_link_libraries(vkBasalt PRIVATE vkBasalt_reshade vkBasalt_shaders)
+# TODO: check if it works
+get_source_file_property(CONFIG_DEFS ${CMAKE_CURRENT_LIST_DIR}/config.cpp
+                         COMPILE_DEFINITIONS)
+list(APPEND CONFIG_DEFS "VKBASALT_SYSCONFDIR=\"${CMAKE_INSTALL_SYSCONFDIR}\"")
+list(APPEND CONFIG_DEFS "VKBASALT_DATADIR=\"${CMAKE_INSTALL_DATADIR}\"")
+set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/config.cpp
+                            PROPERTIES COMPILE_DEFINITIONS CONFIG_DEFS)
+
+set_target_properties(vkBasalt PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+
+target_link_libraries(vkBasalt PRIVATE vkBasalt_reshade vkBasalt_shader)
