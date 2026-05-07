@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.31)
 
 project(vkbasalt LANGUAGES C CXX)
 
-# default_options from previous meson: ['c_std=c11', 'cpp_std=c++2a'])
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -19,12 +18,21 @@ find_package(Vulkan REQUIRED)
 find_package(X11 REQUIRED)
 find_program(GLSLANG names glslangValidator)
 
+include(GNUInstallDirs)
+
 add_subdirectory(src/)
 
-# TODO: install scripts and don't forget about default config requires cmake
-# generation from a template
+# ##############################################################################
+# Install
+# ##############################################################################
+set(VKBASALT_LIBRARY_OUTPUT_NAME
+    "${CMAKE_SHARED_LIBRARY_PREFIX}vkbasalt${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
-include(GNUInstallDirs)
+configure_file(${CMAKE_CURRENT_LIST_DIR}/config/vkBasalt.json.in
+               ${CMAKE_CURRENT_BINARY_DIR}/vkBasalt.json @ONLY)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/vkBasalt.json
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/vulkan/implicit_layer.d")
 
 install(
   TARGETS vkbasalt_vkbasalt

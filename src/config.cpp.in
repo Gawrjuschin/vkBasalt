@@ -27,9 +27,9 @@ namespace vkBasalt
             "vkBasalt.conf",                                     // per game config
             userXdgConfigFile,                                   // user-global config
             userConfigFile,                                      // legacy default config
-            "/@CMAKE_INSTALL_SYSCONFDIR@/vkBasalt.conf",          // system-wide config
-            "/@CMAKE_INSTALL_SYSCONFDIR@/vkBasalt/vkBasalt.conf", // system-wide config (alternative)
-            "/@CMAKE_INSTALL_DATADIR@/vkBasalt/vkBasalt.conf",    // legacy system-wide config
+            "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_SYSCONFDIR@/vkBasalt.conf",          // system-wide config
+            "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_SYSCONFDIR@/vkBasalt/vkBasalt.conf", // system-wide config (alternative)
+            "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_DATADIR@/vkBasalt/vkBasalt.conf",    // legacy system-wide config
         };
 
         for (const auto& cFile : configPath)
