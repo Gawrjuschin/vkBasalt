@@ -4,24 +4,44 @@ add_subdirectory(reshade/)
 add_subdirectory(shader/)
 
 # TODO: better place
-add_library(vkBasalt_X11input OBJECT)
+add_library(vkbasalt_x11_input OBJECT)
 target_sources(
-  vkBasalt_X11input
+  vkbasalt_x11_input
   PRIVATE ${CMAKE_CURRENT_LIST_DIR}/keyboard_input_x11.cpp
   PUBLIC FILE_SET HEADERS FILES
          ${CMAKE_CURRENT_LIST_DIR}/keyboard_input_x11.hpp)
-target_link_libraries(vkBasalt_X11input PUBLIC X11::X11)
+target_link_libraries(vkbasalt_x11_input PUBLIC X11::X11)
+set_target_properties(
+  vkbasalt_x11_input PROPERTIES POSITION_INDEPENDENT_CODE TRUE # Enables PIC
+)
 
-set(VKBASALT_SYSCONFDIR "${CMAKE_INSTALL_SYSCONFDIR}")
-set(VKBASALT_DATADIR "${CMAKE_INSTALL_DATADIR}")
+add_library(vkbasalt_vkbasalt SHARED)
+add_library(vkbasalt::vkbasalt ALIAS vkbasalt_vkbasalt)
+
 configure_file(${CMAKE_CURRENT_LIST_DIR}/config.cpp.in
                ${CMAKE_CURRENT_BINARY_DIR}/config.cpp @ONLY)
 
-add_library(vkBasalt SHARED)
+include(GenerateExportHeader)
+generate_export_header(vkbasalt_vkbasalt BASE_NAME vkbasalt)
 
 target_sources(
-  vkBasalt
-  PRIVATE FILE_SET HEADERS FILES ${CMAKE_CURRENT_LIST_DIR}/config.hpp
+  vkbasalt_vkbasalt
+  PRIVATE FILE_SET
+          generated_headers
+          TYPE
+          HEADERS
+          BASE_DIRS
+          ${CMAKE_CURRENT_BINARY_DIR}
+          FILES
+          ${CMAKE_CURRENT_BINARY_DIR}/vkbasalt_export.h
+  PRIVATE FILE_SET
+          project_headers
+          TYPE
+          HEADERS
+          BASE_DIRS
+          ${CMAKE_CURRENT_LIST_DIR}
+          FILES
+          ${CMAKE_CURRENT_LIST_DIR}/config.hpp
   PRIVATE ${CMAKE_CURRENT_LIST_DIR}/config.cpp.in
           ${CMAKE_CURRENT_BINARY_DIR}/config.cpp
           ${CMAKE_CURRENT_LIST_DIR}/AreaTex.h
@@ -97,6 +117,15 @@ target_sources(
           ${CMAKE_CURRENT_LIST_DIR}/vkfuncs.hpp
           ${CMAKE_CURRENT_LIST_DIR}/vulkan_include.hpp)
 
-set_target_properties(vkBasalt PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+set_target_properties(
+  vkbasalt_vkbasalt
+  PROPERTIES POSITION_INDEPENDENT_CODE TRUE # Enables PIC
+             C_VISIBILITY_PRESET hidden # Hides symbols
+             CXX_VISIBILITY_PRESET hidden # Hides symbols
+             VISIBILITY_INLINES_HIDDEN ON # Hides inlined functions
+             EXPORT_NAME vkbasalt # To use namespace
+             OUTPUT_NAME vkbasalt # Actual library name
+)
 
-target_link_libraries(vkBasalt PRIVATE vkBasalt_reshade vkBasalt_shader)
+target_link_libraries(
+  vkbasalt_vkbasalt PRIVATE vkbasalt_x11_input vkbasalt_reshade vkbasalt_shader)

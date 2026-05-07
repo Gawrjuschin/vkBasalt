@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.31)
 
-add_library(vkBasalt_reshade OBJECT)
+add_library(vkbasalt_reshade OBJECT)
 
 target_sources(
-  vkBasalt_reshade
+  vkbasalt_reshade
   PUBLIC FILE_SET
          HEADERS
          FILES
@@ -25,7 +25,7 @@ target_sources(
           ${CMAKE_CURRENT_LIST_DIR}/effect_symbol_table_intrinsics.inl
           ${CMAKE_CURRENT_LIST_DIR}/effect_symbol_table.cpp)
 
-set_target_properties(vkBasalt_reshade PROPERTIES POSITION_INDEPENDENT_CODE
+set_target_properties(vkbasalt_reshade PROPERTIES POSITION_INDEPENDENT_CODE
                                                   TRUE)
 
-target_link_libraries(vkBasalt_reshade PUBLIC SPIRV-Headers::SPIRV-Headers)
+target_link_libraries(vkbasalt_reshade PUBLIC SPIRV-Headers::SPIRV-Headers)

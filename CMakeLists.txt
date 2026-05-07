@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.31)
 
-project(vkBasalt LANGUAGES C CXX)
+project(vkbasalt LANGUAGES C CXX)
 
 # default_options from previous meson: ['c_std=c11', 'cpp_std=c++2a'])
 set(CMAKE_CXX_STANDARD 17)
@@ -23,3 +23,16 @@ add_subdirectory(src/)
 
 # TODO: install scripts and don't forget about default config requires cmake
 # generation from a template
+
+include(GNUInstallDirs)
+
+install(
+  TARGETS vkbasalt_vkbasalt
+  EXPORT ${PROJECT_NAME}-targets
+  DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+install(
+  EXPORT ${PROJECT_NAME}-targets
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+  NAMESPACE ${PROJECT_NAME}::
+  FILE ${PROJECT_NAME}-config.cmake)

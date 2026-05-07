@@ -26,10 +26,10 @@ macro(target_generate_shaders target)
            "${headers_list}")
 endmacro()
 
-add_library(vkBasalt_shader INTERFACE)
+add_library(vkbasalt_shader INTERFACE)
 
 target_sources(
-  vkBasalt_shader
+  vkbasalt_shader
   PUBLIC FILE_SET
          headers
          TYPE
@@ -42,7 +42,7 @@ target_sources(
          ${CMAKE_CURRENT_LIST_DIR}/smaa_settings.h)
 
 target_generate_shaders(
-  vkBasalt_shader
+  vkbasalt_shader
   cas.frag
   deband.frag
   dls.frag

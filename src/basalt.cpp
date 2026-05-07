@@ -39,13 +39,9 @@
 #include "effect_reshade.hpp"
 #include "effect_transfer.hpp"
 
-#define VKBASALT_NAME "VK_LAYER_VKBASALT_post_processing"
+#include <vkbasalt_export.h>
 
-#if defined(__GNUC__) && __GNUC__ >= 4
-#define VK_BASALT_EXPORT __attribute__((visibility("default")))
-#else
-#error "Unsupported platform!"
-#endif
+#define VKBASALT_NAME "VK_LAYER_VKBASALT_post_processing"
 
 namespace vkBasalt
 {
@@ -835,8 +831,8 @@ namespace vkBasalt
 extern "C"
 { // these are the entry points for the layer, so they need to be c-linkeable
 
-    VK_BASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetDeviceProcAddr(VkDevice device, const char* pName);
-    VK_BASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetInstanceProcAddr(VkInstance instance, const char* pName);
+    VKBASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetDeviceProcAddr(VkDevice device, const char* pName);
+    VKBASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetInstanceProcAddr(VkInstance instance, const char* pName);
 
 #define GETPROCADDR(func) \
     if (!std::strcmp(pName, "vk" #func)) \
@@ -875,7 +871,7 @@ extern "C"
         GETPROCADDR(BindImageMemory); \
     }
 
-    VK_BASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetDeviceProcAddr(VkDevice device, const char* pName)
+    VKBASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetDeviceProcAddr(VkDevice device, const char* pName)
     {
         if (vkBasalt::pConfig == nullptr)
         {
@@ -890,7 +886,7 @@ extern "C"
         }
     }
 
-    VK_BASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetInstanceProcAddr(VkInstance instance, const char* pName)
+    VKBASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetInstanceProcAddr(VkInstance instance, const char* pName)
     {
         if (vkBasalt::pConfig == nullptr)
         {
