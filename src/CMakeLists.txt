@@ -12,18 +12,24 @@ target_sources(
          ${CMAKE_CURRENT_LIST_DIR}/keyboard_input_x11.hpp)
 target_link_libraries(vkBasalt_X11input PUBLIC X11::X11)
 
+set(VKBASALT_SYSCONFDIR "${CMAKE_INSTALL_SYSCONFDIR}")
+set(VKBASALT_DATADIR "${CMAKE_INSTALL_DATADIR}")
+configure_file(${CMAKE_CURRENT_LIST_DIR}/config.cpp.in
+               ${CMAKE_CURRENT_BINARY_DIR}/config.cpp @ONLY)
+
 add_library(vkBasalt SHARED)
 
 target_sources(
   vkBasalt
-  PRIVATE ${CMAKE_CURRENT_LIST_DIR}/AreaTex.h
+  PRIVATE FILE_SET HEADERS FILES ${CMAKE_CURRENT_LIST_DIR}/config.hpp
+  PRIVATE ${CMAKE_CURRENT_LIST_DIR}/config.cpp.in
+          ${CMAKE_CURRENT_BINARY_DIR}/config.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/AreaTex.h
           ${CMAKE_CURRENT_LIST_DIR}/basalt.cpp
           ${CMAKE_CURRENT_LIST_DIR}/buffer.hpp
           ${CMAKE_CURRENT_LIST_DIR}/buffer.cpp
           ${CMAKE_CURRENT_LIST_DIR}/command_buffer.hpp
           ${CMAKE_CURRENT_LIST_DIR}/command_buffer.cpp
-          ${CMAKE_CURRENT_LIST_DIR}/config.hpp
-          ${CMAKE_CURRENT_LIST_DIR}/config.cpp
           ${CMAKE_CURRENT_LIST_DIR}/descriptor_set.hpp
           ${CMAKE_CURRENT_LIST_DIR}/descriptor_set.cpp
           ${CMAKE_CURRENT_LIST_DIR}/effect_cas.hpp
@@ -90,14 +96,6 @@ target_sources(
           ${CMAKE_CURRENT_LIST_DIR}/vkdispatch.cpp
           ${CMAKE_CURRENT_LIST_DIR}/vkfuncs.hpp
           ${CMAKE_CURRENT_LIST_DIR}/vulkan_include.hpp)
-
-# TODO: check if it works
-get_source_file_property(CONFIG_DEFS ${CMAKE_CURRENT_LIST_DIR}/config.cpp
-                         COMPILE_DEFINITIONS)
-list(APPEND CONFIG_DEFS "VKBASALT_SYSCONFDIR=\"${CMAKE_INSTALL_SYSCONFDIR}\"")
-list(APPEND CONFIG_DEFS "VKBASALT_DATADIR=\"${CMAKE_INSTALL_DATADIR}\"")
-set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/config.cpp
-                            PROPERTIES COMPILE_DEFINITIONS CONFIG_DEFS)
 
 set_target_properties(vkBasalt PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
