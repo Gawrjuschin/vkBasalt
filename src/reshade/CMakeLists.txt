@@ -29,3 +29,11 @@ set_target_properties(vkbasalt_reshade PROPERTIES POSITION_INDEPENDENT_CODE
                                                   TRUE)
 
 target_link_libraries(vkbasalt_reshade PUBLIC SPIRV-Headers::SPIRV-Headers)
+
+set_target_properties(
+  vkbasalt_reshade
+  PROPERTIES POSITION_INDEPENDENT_CODE TRUE # Enables PIC
+             C_VISIBILITY_PRESET hidden # Hides symbols
+             CXX_VISIBILITY_PRESET hidden # Hides symbols
+             VISIBILITY_INLINES_HIDDEN ON # Hides inlined functions
+)

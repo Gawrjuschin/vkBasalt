@@ -57,3 +57,11 @@ target_generate_shaders(
   smaa_edge_luma.frag
   smaa_neighbor.frag
   smaa_neighbor.vert)
+
+set_target_properties(
+  vkbasalt_shader
+  PROPERTIES POSITION_INDEPENDENT_CODE TRUE # Enables PIC
+             C_VISIBILITY_PRESET hidden # Hides symbols
+             CXX_VISIBILITY_PRESET hidden # Hides symbols
+             VISIBILITY_INLINES_HIDDEN ON # Hides inlined functions
+)

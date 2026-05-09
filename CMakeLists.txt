@@ -20,6 +20,7 @@ find_program(GLSLANG names glslangValidator)
 
 include(GNUInstallDirs)
 
+# TODO: only if with_so
 add_subdirectory(src/)
 
 # ##############################################################################
@@ -28,6 +29,7 @@ add_subdirectory(src/)
 set(VKBASALT_LIBRARY_OUTPUT_NAME
     "${CMAKE_SHARED_LIBRARY_PREFIX}vkbasalt${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
+# TODO: only if with_so
 configure_file(${CMAKE_CURRENT_LIST_DIR}/config/vkBasalt.json.in
                ${CMAKE_CURRENT_BINARY_DIR}/vkBasalt.json @ONLY)
 
@@ -37,7 +39,7 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/vkBasalt.json
 install(
   TARGETS vkbasalt_vkbasalt
   EXPORT ${PROJECT_NAME}-targets
-  DESTINATION ${CMAKE_INSTALL_LIBDIR})
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}) # TODO: append_libdir support
 
 install(
   EXPORT ${PROJECT_NAME}-targets

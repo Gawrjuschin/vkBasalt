@@ -12,7 +12,11 @@ target_sources(
          ${CMAKE_CURRENT_LIST_DIR}/keyboard_input_x11.hpp)
 target_link_libraries(vkbasalt_x11_input PUBLIC X11::X11)
 set_target_properties(
-  vkbasalt_x11_input PROPERTIES POSITION_INDEPENDENT_CODE TRUE # Enables PIC
+  vkbasalt_x11_input
+  PROPERTIES POSITION_INDEPENDENT_CODE TRUE # Enables PIC
+             C_VISIBILITY_PRESET hidden # Hides symbols
+             CXX_VISIBILITY_PRESET hidden # Hides symbols
+             VISIBILITY_INLINES_HIDDEN ON # Hides inlined functions
 )
 
 add_library(vkbasalt_vkbasalt SHARED)
