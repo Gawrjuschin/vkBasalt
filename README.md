@@ -13,6 +13,15 @@ It is also possible to use Reshade Fx shaders.
 ## Disclaimer
 This is one of my first projects ever, so expect it to have bugs. Use it at your own risk.
 
+## TODOs
+- CMake packaging
+- "api_version" in json file
+- rename json file to conform other
+- install global default config with disabled effects
+- reload config hotkey
+- segfault fix in TODOs
+- refactoring and modernization
+
 ## Building from Source
 
 ### Dependencies

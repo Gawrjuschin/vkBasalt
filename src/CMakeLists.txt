@@ -87,7 +87,7 @@ target_sources(
           ${CMAKE_CURRENT_LIST_DIR}/image_view.hpp
           ${CMAKE_CURRENT_LIST_DIR}/image_view.cpp
           ${CMAKE_CURRENT_LIST_DIR}/image.hpp
-          ${CMAKE_CURRENT_LIST_DIR}/image.hpp
+          ${CMAKE_CURRENT_LIST_DIR}/image.cpp
           ${CMAKE_CURRENT_LIST_DIR}/keyboard_input.hpp
           ${CMAKE_CURRENT_LIST_DIR}/keyboard_input.cpp
           ${CMAKE_CURRENT_LIST_DIR}/logger.hpp
@@ -132,4 +132,5 @@ set_target_properties(
 )
 
 target_link_libraries(
-  vkbasalt_vkbasalt PRIVATE vkbasalt_x11_input vkbasalt_reshade vkbasalt_shader)
+  vkbasalt_vkbasalt PRIVATE Vulkan::Headers vkbasalt_x11_input vkbasalt_reshade
+                            vkbasalt_shader)
