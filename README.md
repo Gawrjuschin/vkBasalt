@@ -59,6 +59,8 @@ ninja -C builddir.32 install
 ## Usage
 Enable the layer with the environment variable.
 
+VK_LOADER_LAYERS_ENABLE must be set in your environment:
+VK_LOADER_LAYERS_ENABLE=VK_LAYER_VKBASALT_post_processing
 ### Standard
 When using the terminal or an application (.desktop) file, execute:
 ```ini

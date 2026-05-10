@@ -815,6 +815,7 @@ namespace vkBasalt
             }
 
             scoped_lock l(globalLock);
+            // TODO: prevent nullptr access
             return instanceDispatchMap[GetKey(physicalDevice)].EnumerateDeviceExtensionProperties(
                 physicalDevice, pLayerName, pPropertyCount, pProperties);
         }
@@ -882,6 +883,7 @@ extern "C"
 
         {
             vkBasalt::scoped_lock l(vkBasalt::globalLock);
+            // TODO: prevent nullptr access
             return vkBasalt::deviceMap[vkBasalt::GetKey(device)]->vkd.GetDeviceProcAddr(device, pName);
         }
     }
@@ -897,6 +899,7 @@ extern "C"
 
         {
             vkBasalt::scoped_lock l(vkBasalt::globalLock);
+            // TODO: prevent nullptr access
             return vkBasalt::instanceDispatchMap[vkBasalt::GetKey(instance)].GetInstanceProcAddr(instance, pName);
         }
     }
