@@ -16,7 +16,6 @@ This is one of my first projects ever, so expect it to have bugs. Use it at your
 ## TODOs
 - CMake packaging
 - "api_version" in json file
-- rename json file to conform other
 - segfault fix in TODOs
 - use spdlog
 - reload config hotkey

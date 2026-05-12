@@ -1,5 +1,4 @@
 #include "config.hpp"
-// #include "config_paths.hpp"
 
 #include <sstream>
 #include <locale>

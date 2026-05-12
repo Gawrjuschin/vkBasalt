@@ -1,8 +1,14 @@
 cmake_minimum_required(VERSION 3.31)
 
+# ===============================================================================
+# Subprojects
+# ===============================================================================
 add_subdirectory(reshade/)
 add_subdirectory(shader/)
 
+# ===============================================================================
+# X11 support library hides includes
+# ===============================================================================
 # TODO: better place
 add_library(vkbasalt_x11_input OBJECT)
 target_sources(
@@ -19,19 +25,24 @@ set_target_properties(
              VISIBILITY_INLINES_HIDDEN ON # Hides inlined functions
 )
 
+# ===============================================================================
+# Main library (VkLayer)
+# ===============================================================================
 add_library(vkbasalt_vkbasalt SHARED)
 add_library(vkbasalt::vkbasalt ALIAS vkbasalt_vkbasalt)
 
+# Config with default paths based on CMake install variables
 configure_file(${CMAKE_CURRENT_LIST_DIR}/config.cpp.in
                ${CMAKE_CURRENT_BINARY_DIR}/config.cpp @ONLY)
 
+# Exports macro header
 include(GenerateExportHeader)
 generate_export_header(vkbasalt_vkbasalt BASE_NAME vkbasalt)
 
 target_sources(
   vkbasalt_vkbasalt
   PRIVATE FILE_SET
-          generated_headers
+          generated_headers # used in basalt.cpp
           TYPE
           HEADERS
           BASE_DIRS
@@ -39,14 +50,15 @@ target_sources(
           FILES
           ${CMAKE_CURRENT_BINARY_DIR}/vkbasalt_export.h
   PRIVATE FILE_SET
-          project_headers
+          project_headers # used by generated config.cpp in
+                          # CMAKE_CURRENT_BINARY_DIR
           TYPE
           HEADERS
           BASE_DIRS
           ${CMAKE_CURRENT_LIST_DIR}
           FILES
           ${CMAKE_CURRENT_LIST_DIR}/config.hpp
-  PRIVATE ${CMAKE_CURRENT_LIST_DIR}/config.cpp.in
+  PRIVATE ${CMAKE_CURRENT_LIST_DIR}/config.cpp.in # to display in IDE
           ${CMAKE_CURRENT_BINARY_DIR}/config.cpp
           ${CMAKE_CURRENT_LIST_DIR}/AreaTex.h
           ${CMAKE_CURRENT_LIST_DIR}/basalt.cpp
@@ -127,7 +139,7 @@ set_target_properties(
              C_VISIBILITY_PRESET hidden # Hides symbols
              CXX_VISIBILITY_PRESET hidden # Hides symbols
              VISIBILITY_INLINES_HIDDEN ON # Hides inlined functions
-             EXPORT_NAME vkbasalt # To use namespace
+             EXPORT_NAME vkbasalt # Required to use cmake target in namespace
              OUTPUT_NAME vkbasalt # Actual library name
 )
 

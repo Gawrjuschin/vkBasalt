@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.31)
 
+# ===============================================================================
+# Reshade support library
+# ===============================================================================
 add_library(vkbasalt_reshade OBJECT)
 
 target_sources(
@@ -24,9 +27,6 @@ target_sources(
           ${CMAKE_CURRENT_LIST_DIR}/effect_preprocessor.cpp
           ${CMAKE_CURRENT_LIST_DIR}/effect_symbol_table_intrinsics.inl
           ${CMAKE_CURRENT_LIST_DIR}/effect_symbol_table.cpp)
-
-set_target_properties(vkbasalt_reshade PROPERTIES POSITION_INDEPENDENT_CODE
-                                                  TRUE)
 
 target_link_libraries(vkbasalt_reshade PUBLIC SPIRV-Headers::SPIRV-Headers)
 

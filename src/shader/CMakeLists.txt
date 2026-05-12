@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.31)
 
-# TODO: escaping in cmd
+# ===============================================================================
+# Shaders generation macro
+# ===============================================================================
 macro(target_generate_shaders target)
   set(FILES_STEMS "${ARGN}")
   set(headers_list "")
@@ -17,7 +19,7 @@ macro(target_generate_shaders target)
   target_sources(
     ${target}
     PUBLIC FILE_SET
-           generated
+           generated_shaders
            TYPE
            HEADERS
            BASE_DIRS
@@ -26,6 +28,9 @@ macro(target_generate_shaders target)
            "${headers_list}")
 endmacro()
 
+# ===============================================================================
+# Generated shaders library
+# ===============================================================================
 add_library(vkbasalt_shader INTERFACE)
 
 target_sources(
@@ -57,11 +62,3 @@ target_generate_shaders(
   smaa_edge_luma.frag
   smaa_neighbor.frag
   smaa_neighbor.vert)
-
-set_target_properties(
-  vkbasalt_shader
-  PROPERTIES POSITION_INDEPENDENT_CODE TRUE # Enables PIC
-             C_VISIBILITY_PRESET hidden # Hides symbols
-             CXX_VISIBILITY_PRESET hidden # Hides symbols
-             VISIBILITY_INLINES_HIDDEN ON # Hides inlined functions
-)
