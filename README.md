@@ -17,10 +17,12 @@ This is one of my first projects ever, so expect it to have bugs. Use it at your
 - CMake packaging
 - "api_version" in json file
 - rename json file to conform other
-- install global default config with disabled effects
-- reload config hotkey
 - segfault fix in TODOs
-- refactoring and modernization
+- use spdlog
+- reload config hotkey
+- refactoring and modernization of C++ code
+- vulkan code refactoring
+- temporal SMAA
 
 ## Building from Source
 
@@ -37,6 +39,7 @@ Before building, you will need:
 **These instructions use `--prefix=/usr`, which is generally not recommened since vkBasalt will be installed in directories that are meant for the package manager. The alternative is not setting the prefix, it will then be installed in `/usr/local`. But you need to make sure that `ld` finds the library since /usr/local is very likely not in the default path.** 
 
 In general, prefer using distro provided packages.
+TODO: packaging for new version
 
 ```
 git clone https://github.com/DadSchoorse/vkBasalt.git
@@ -44,12 +47,13 @@ cd vkBasalt
 ```
 
 #### 64bit
-
+TODO: build instructions for cmake, delete meson files from project
 ```
 meson setup --buildtype=release --prefix=/usr builddir
 ninja -C builddir install
 ```
 #### 32bit
+TODO: build instructions for cmake, delete meson files from project
 
 Make sure that `PKG_CONFIG_PATH=/usr/lib32/pkgconfig` and `--libdir=lib32` are correct for your distro and change them if needed. On Debian based distros you need to replace `lib32` with `lib/i386-linux-gnu`, for example.
 ```
@@ -58,6 +62,7 @@ ninja -C builddir.32 install
 ```
 
 ## Packaging status
+TODO: support packaging for specified systems and more (SteamOS, Bazzite and EndeavourOS distros)
 
 [Debian](https://tracker.debian.org/pkg/vkbasalt) `sudo apt install vkbasalt`
 
@@ -68,8 +73,9 @@ ninja -C builddir.32 install
 ## Usage
 Enable the layer with the environment variable.
 
-VK_LOADER_LAYERS_ENABLE must be set in your environment:
+VK_LOADER_LAYERS_ENABLE must be set in your environment (tested on Debian 14):
 VK_LOADER_LAYERS_ENABLE=VK_LAYER_VKBASALT_post_processing
+
 ### Standard
 When using the terminal or an application (.desktop) file, execute:
 ```ini
@@ -90,6 +96,7 @@ ENABLE_VKBASALT=1 %command%
 
 ## Configure
 
+Default config is installed in "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_SYSCONFDIR@/vkBasalt.conf" (that is /usr/local/etc/vkBasalt.conf by default)
 Settings like the CAS sharpening strength can be changed in the config file.
 The config file will be searched for in the following locations:
 * a file set with the environment variable`VKBASALT_CONFIG_FILE=/path/to/vkBasalt.conf`
@@ -117,6 +124,7 @@ reshadeIncludePath = /home/user/reshade-shaders/Shaders
 
 #### Ingame Input
 
+TODO: more solid solution
 The [HOME key](https://en.wikipedia.org/wiki/Home_key) can be used to disable and re-enable the applied effects, the key can also be changed in the config file. This is based on X11 so it won't work on pure wayland. It **should** however at least not crash without X11.
 
 

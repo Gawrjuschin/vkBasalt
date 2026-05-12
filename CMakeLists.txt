@@ -30,11 +30,14 @@ set(VKBASALT_LIBRARY_OUTPUT_NAME
     "${CMAKE_SHARED_LIBRARY_PREFIX}vkbasalt${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
 # TODO: only if with_so
-configure_file(${CMAKE_CURRENT_LIST_DIR}/config/vkBasalt.json.in
-               ${CMAKE_CURRENT_BINARY_DIR}/vkBasalt.json @ONLY)
+configure_file(${CMAKE_CURRENT_LIST_DIR}/config/VkLayer_vkBasalt.json.in
+               ${CMAKE_CURRENT_BINARY_DIR}/VkLayer_vkBasalt.json @ONLY)
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/vkBasalt.json
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/VkLayer_vkBasalt.json
         DESTINATION "${CMAKE_INSTALL_DATADIR}/vulkan/implicit_layer.d")
+
+install(FILES ${CMAKE_CURRENT_LIST_DIR}/config/vkBasalt.conf
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}")
 
 install(
   TARGETS vkbasalt_vkbasalt
