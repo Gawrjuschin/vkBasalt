@@ -15,10 +15,9 @@ This is one of my first projects ever, so expect it to have bugs. Use it at your
 
 ## TODOs
 - CMake packaging
-- "api_version" in json file
 - segfault fix in TODOs
 - use spdlog
-- reload config hotkey
+- reload config hotkey, better hotkeys API
 - refactoring and modernization of C++ code
 - vulkan code refactoring
 - temporal SMAA
@@ -62,7 +61,9 @@ ninja -C builddir.32 install
 
 ## Packaging status
 TODO: support packaging for specified systems and more (SteamOS, Bazzite and EndeavourOS distros)
+Requires configuration with -DCMAKE_INSTALL_PREFIX:PATH=/usr for correct pathes
 
+TODO: new build pipeline
 [Debian](https://tracker.debian.org/pkg/vkbasalt) `sudo apt install vkbasalt`
 
 [Fedora](https://src.fedoraproject.org/rpms/vkBasalt) `sudo dnf install vkBasalt`

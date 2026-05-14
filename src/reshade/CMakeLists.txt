@@ -3,10 +3,10 @@ cmake_minimum_required(VERSION 3.31)
 # ===============================================================================
 # Reshade support library
 # ===============================================================================
-add_library(vkbasalt_reshade OBJECT)
+add_library(vkBasalt_reshade OBJECT)
 
 target_sources(
-  vkbasalt_reshade
+  vkBasalt_reshade
   PUBLIC FILE_SET
          HEADERS
          FILES
@@ -28,10 +28,10 @@ target_sources(
           ${CMAKE_CURRENT_LIST_DIR}/effect_symbol_table_intrinsics.inl
           ${CMAKE_CURRENT_LIST_DIR}/effect_symbol_table.cpp)
 
-target_link_libraries(vkbasalt_reshade PUBLIC SPIRV-Headers::SPIRV-Headers)
+target_link_libraries(vkBasalt_reshade PUBLIC SPIRV-Headers::SPIRV-Headers)
 
 set_target_properties(
-  vkbasalt_reshade
+  vkBasalt_reshade
   PROPERTIES POSITION_INDEPENDENT_CODE TRUE # Enables PIC
              C_VISIBILITY_PRESET hidden # Hides symbols
              CXX_VISIBILITY_PRESET hidden # Hides symbols

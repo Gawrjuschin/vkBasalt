@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.31)
+cmake_minimum_required(VERSION 4.1)
 
 project(
   vkBasalt
@@ -39,32 +39,22 @@ add_subdirectory(src/)
 # Install
 # ===============================================================================
 
-install(FILES ${CMAKE_CURRENT_LIST_DIR}/config/vkBasalt.conf
-        DESTINATION "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}")
+install(FILES "${CMAKE_CURRENT_LIST_DIR}/config/vkBasalt.conf"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}")
 
-if(VKBASALT_WITH_JSON)
-  set(VKBASALT_LIBRARY_OUTPUT_NAME
-      "${CMAKE_SHARED_LIBRARY_PREFIX}vkbasalt${CMAKE_SHARED_LIBRARY_SUFFIX}")
+set(vkBasalt_LIBRARY_OUTPUT_NAME
+    "${CMAKE_SHARED_LIBRARY_PREFIX}vkBasalt${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
-  configure_file(${CMAKE_CURRENT_LIST_DIR}/config/VkLayer_vkBasalt.json.in
-                 ${CMAKE_CURRENT_BINARY_DIR}/VkLayer_vkBasalt.json @ONLY)
+configure_file("${CMAKE_CURRENT_LIST_DIR}/config/VkLayer_vkBasalt.json.in"
+               "${CMAKE_CURRENT_BINARY_DIR}/VkLayer_vkBasalt.json" @ONLY)
 
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/VkLayer_vkBasalt.json
-          DESTINATION "${CMAKE_INSTALL_DATADIR}/vulkan/implicit_layer.d")
-endif()
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/VkLayer_vkBasalt.json"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/vulkan/implicit_layer.d")
 
-if(VKBASALT_WITH_SO)
-  install(
-    TARGETS vkbasalt_vkbasalt
-    EXPORT ${PROJECT_NAME}-targets
-    DESTINATION ${CMAKE_INSTALL_LIBDIR})
-
-  install(
-    EXPORT ${PROJECT_NAME}-targets
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
-    NAMESPACE ${PROJECT_NAME}::
-    FILE ${PROJECT_NAME}-config.cmake)
-endif()
+install(
+  TARGETS vkBasalt_vkBasalt
+  EXPORT ${PROJECT_NAME}-targets
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/vkBasalt")
 
 # ===============================================================================
 # Packaging

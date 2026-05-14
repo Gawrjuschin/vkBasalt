@@ -10,15 +10,15 @@ add_subdirectory(shader/)
 # X11 support library hides includes
 # ===============================================================================
 # TODO: better place
-add_library(vkbasalt_x11_input OBJECT)
+add_library(vkBasalt_x11_input OBJECT)
 target_sources(
-  vkbasalt_x11_input
+  vkBasalt_x11_input
   PRIVATE ${CMAKE_CURRENT_LIST_DIR}/keyboard_input_x11.cpp
   PUBLIC FILE_SET HEADERS FILES
          ${CMAKE_CURRENT_LIST_DIR}/keyboard_input_x11.hpp)
-target_link_libraries(vkbasalt_x11_input PUBLIC X11::X11)
+target_link_libraries(vkBasalt_x11_input PUBLIC X11::X11)
 set_target_properties(
-  vkbasalt_x11_input
+  vkBasalt_x11_input
   PROPERTIES POSITION_INDEPENDENT_CODE TRUE # Enables PIC
              C_VISIBILITY_PRESET hidden # Hides symbols
              CXX_VISIBILITY_PRESET hidden # Hides symbols
@@ -28,8 +28,8 @@ set_target_properties(
 # ===============================================================================
 # Main library (VkLayer)
 # ===============================================================================
-add_library(vkbasalt_vkbasalt SHARED)
-add_library(vkbasalt::vkbasalt ALIAS vkbasalt_vkbasalt)
+add_library(vkBasalt_vkBasalt SHARED)
+add_library(vkBasalt::vkBasalt ALIAS vkBasalt_vkBasalt)
 
 # Config with default paths based on CMake install variables
 configure_file(${CMAKE_CURRENT_LIST_DIR}/config.cpp.in
@@ -37,10 +37,10 @@ configure_file(${CMAKE_CURRENT_LIST_DIR}/config.cpp.in
 
 # Exports macro header
 include(GenerateExportHeader)
-generate_export_header(vkbasalt_vkbasalt BASE_NAME vkbasalt)
+generate_export_header(vkBasalt_vkBasalt BASE_NAME vkBasalt)
 
 target_sources(
-  vkbasalt_vkbasalt
+  vkBasalt_vkBasalt
   PRIVATE FILE_SET
           generated_headers # used in basalt.cpp
           TYPE
@@ -134,15 +134,15 @@ target_sources(
           ${CMAKE_CURRENT_LIST_DIR}/vulkan_include.hpp)
 
 set_target_properties(
-  vkbasalt_vkbasalt
+  vkBasalt_vkBasalt
   PROPERTIES POSITION_INDEPENDENT_CODE TRUE # Enables PIC
              C_VISIBILITY_PRESET hidden # Hides symbols
              CXX_VISIBILITY_PRESET hidden # Hides symbols
              VISIBILITY_INLINES_HIDDEN ON # Hides inlined functions
-             EXPORT_NAME vkbasalt # Required to use cmake target in namespace
-             OUTPUT_NAME vkbasalt # Actual library name
+             EXPORT_NAME vkBasalt # Required to use cmake target in namespace
+             OUTPUT_NAME vkBasalt # Actual library name
 )
 
 target_link_libraries(
-  vkbasalt_vkbasalt PRIVATE Vulkan::Headers vkbasalt_x11_input vkbasalt_reshade
-                            vkbasalt_shader)
+  vkBasalt_vkBasalt PRIVATE Vulkan::Headers vkBasalt_x11_input vkBasalt_reshade
+                            vkBasalt_shader)
