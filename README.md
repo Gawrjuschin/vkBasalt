@@ -14,8 +14,10 @@ It is also possible to use Reshade Fx shaders.
 This is one of my first projects ever, so expect it to have bugs. Use it at your own risk.
 
 ## TODOs
+- System-wide config in /etc/vulkan/implicit_layer.d/
+- Better install dirs (cmake tweak)
 - CMake packaging
-- segfault fix in TODOs
+- Get SMAA files with fetchcontent
 - use spdlog
 - reload config hotkey, better hotkeys API
 - refactoring and modernization of C++ code
