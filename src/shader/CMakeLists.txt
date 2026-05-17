@@ -10,8 +10,9 @@ macro(target_generate_shaders target)
   foreach(STEM IN LISTS FILES_STEMS)
     add_custom_command(
       OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${STEM}.h"
-      COMMAND glslangValidator -V -x "${CMAKE_CURRENT_LIST_DIR}/${STEM}.glsl" -o
-              "${CMAKE_CURRENT_BINARY_DIR}/${STEM}.h"
+      COMMAND
+        Vulkan::glslangValidator -V -x "${CMAKE_CURRENT_LIST_DIR}/${STEM}.glsl"
+        -o "${CMAKE_CURRENT_BINARY_DIR}/${STEM}.h"
       VERBATIM)
     list(APPEND headers_list "${CMAKE_CURRENT_BINARY_DIR}/${STEM}.h")
   endforeach()
