@@ -60,7 +60,6 @@ target_sources(
           ${CMAKE_CURRENT_LIST_DIR}/config.hpp
   PRIVATE ${CMAKE_CURRENT_LIST_DIR}/config.cpp.in # to display in IDE
           ${CMAKE_CURRENT_BINARY_DIR}/config.cpp
-          ${CMAKE_CURRENT_LIST_DIR}/AreaTex.h
           ${CMAKE_CURRENT_LIST_DIR}/basalt.cpp
           ${CMAKE_CURRENT_LIST_DIR}/buffer.hpp
           ${CMAKE_CURRENT_LIST_DIR}/buffer.cpp
@@ -117,7 +116,6 @@ target_sources(
           ${CMAKE_CURRENT_LIST_DIR}/reshade_uniforms.cpp
           ${CMAKE_CURRENT_LIST_DIR}/sampler.hpp
           ${CMAKE_CURRENT_LIST_DIR}/sampler.cpp
-          ${CMAKE_CURRENT_LIST_DIR}/SearchTex.h
           ${CMAKE_CURRENT_LIST_DIR}/shader_sources.hpp
           ${CMAKE_CURRENT_LIST_DIR}/shader.hpp
           ${CMAKE_CURRENT_LIST_DIR}/shader.cpp

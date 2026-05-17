@@ -11,7 +11,7 @@ project(
 # ===============================================================================
 # C/C++ standarts requirements
 # ===============================================================================
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_C_STANDARD 11)
@@ -23,7 +23,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 find_package(SPIRV-Headers REQUIRED)
 find_package(
   Vulkan
-  COMPONENTS glslangValidator
+  COMPONENTS glslc
   REQUIRED)
 find_package(X11 REQUIRED)
 

@@ -1,5 +1,4 @@
 #version 450
-#extension  GL_GOOGLE_include_directive : require
 
 layout(set = 0, binding = 1) uniform sampler2D edgesTex;
 layout(set = 0, binding = 2) uniform sampler2D areaTex;
@@ -14,7 +13,7 @@ layout(location = 2) in vec4[3] offsets;
 
 #define SMAA_INCLUDE_VS 0
 #define SMAA_INCLUDE_PS 1
-#include "smaa.h"
+#include <SMAA.hlsl>
 
 void main()
 {

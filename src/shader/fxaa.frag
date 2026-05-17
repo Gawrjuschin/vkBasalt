@@ -1,5 +1,4 @@
 #version 450
-#extension  GL_GOOGLE_include_directive : require
 
 #define FXAA_QUALITY_PRESET 39
 #define FXAA_GLSL_130 1

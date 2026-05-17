@@ -1,5 +1,4 @@
 #version 450
-#extension  GL_GOOGLE_include_directive : require
 
 layout(location=0) out vec2 textureCoord;
 layout(location=1) out vec4 offset;
@@ -7,7 +6,7 @@ layout(location=1) out vec4 offset;
 #include "smaa_settings.h"
 #define SMAA_INCLUDE_VS 1
 #define SMAA_INCLUDE_PS 0
-#include "smaa.h"
+#include <SMAA.hlsl>
 
 void main()
 {

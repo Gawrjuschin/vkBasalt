@@ -13,8 +13,8 @@
 #include "image.hpp"
 #include "util.hpp"
 
-#include "AreaTex.h"
-#include "SearchTex.h"
+#include <Textures/AreaTex.h>
+#include <Textures/SearchTex.h>
 #include "shader_sources.hpp"
 
 namespace vkBasalt
