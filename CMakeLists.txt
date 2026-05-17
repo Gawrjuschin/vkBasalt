@@ -1,8 +1,22 @@
 cmake_minimum_required(VERSION 4.1)
 
+# ===============================================================================
+# Extract project version from git tag
+# ===============================================================================
+find_package(Git REQUIRED)
+
+execute_process(
+  COMMAND ${GIT_EXECUTABLE} describe --tags
+  WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+  OUTPUT_VARIABLE GIT_TAG
+  OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+string(REGEX REPLACE "^[vV]" "" TAG_VERSION "${GIT_TAG}")
+string(REGEX REPLACE "\-[Rr][Cc][0-9]+" "" TAG_VERSION "${TAG_VERSION}")
+
 project(
   vkBasalt
-  VERSION 0.4.0
+  VERSION "${TAG_VERSION}"
   HOMEPAGE_URL https://github.com/Gawrjuschin/vkBasalt
   DESCRIPTION
     "vkBasalt is a vulkan layer library injects effects into your games."
