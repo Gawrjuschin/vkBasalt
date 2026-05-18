@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.31)
 # ===============================================================================
 # Subprojects
 # ===============================================================================
-add_subdirectory(reshade/)
 add_subdirectory(shader/)
 
 # ===============================================================================
@@ -142,5 +141,4 @@ set_target_properties(
 )
 
 target_link_libraries(
-  vkBasalt_vkBasalt PRIVATE Vulkan::Headers vkBasalt_x11_input vkBasalt_reshade
-                            vkBasalt_shader)
+  vkBasalt_vkBasalt PRIVATE Vulkan::Headers vkBasalt_x11_input vkBasalt_shader)

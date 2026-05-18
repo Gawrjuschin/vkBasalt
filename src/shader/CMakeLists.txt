@@ -10,6 +10,7 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/iryoku/smaa.git
   GIT_TAG master)
 
+# TODO: change to repo mentioned in this gist or another repo with fxaa file
 FetchContent_Declare(
   fxaa
   URL "https://gist.github.com/kosua20/0c506b81b3812ac900048059d2383126/raw/9c1f4b97ea5a2ac4bf632fff509f64d7dff0e96a/gistfile1.txt"
