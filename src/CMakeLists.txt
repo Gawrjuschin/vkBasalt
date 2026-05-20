@@ -1,6 +1,34 @@
 cmake_minimum_required(VERSION 3.31)
 
 # ===============================================================================
+# Reshade
+# ===============================================================================
+# TODO: better solution
+cmake_policy(SET CMP0169 OLD)
+include(FetchContent)
+FetchContent_Declare(
+  reshade
+  GIT_REPOSITORY "https://github.com/crosire/reshade.git"
+  GIT_TAG "v4.9.0") # max supported by vkBasalt version now
+
+FetchContent_Populate(reshade)
+
+add_library(vkBasalt_reshade INTERFACE)
+
+target_sources(
+  vkBasalt_reshade
+  PUBLIC FILE_SET
+         reshade_headers
+         TYPE
+         HEADERS
+         BASE_DIRS
+         ${reshade_SOURCE_DIR}/source
+         FILES
+         # ${reshade_SOURCE_DIR}/source/effect_token.hpp
+         ${reshade_SOURCE_DIR}/source/effect_expression.hpp
+         ${reshade_SOURCE_DIR}/source/effect_module.hpp)
+
+# ===============================================================================
 # Subprojects
 # ===============================================================================
 add_subdirectory(shader/)
@@ -141,4 +169,5 @@ set_target_properties(
 )
 
 target_link_libraries(
-  vkBasalt_vkBasalt PRIVATE Vulkan::Headers vkBasalt_x11_input vkBasalt_shader)
+  vkBasalt_vkBasalt PRIVATE Vulkan::Headers vkBasalt_x11_input vkBasalt_shader
+                            vkBasalt_reshade)
