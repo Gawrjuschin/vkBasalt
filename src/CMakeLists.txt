@@ -1,17 +1,25 @@
 cmake_minimum_required(VERSION 3.31)
 
 # ===============================================================================
-# Reshade
+# Reshade Came with Stb dependency
 # ===============================================================================
 # TODO: better solution
 cmake_policy(SET CMP0169 OLD)
+
 include(FetchContent)
+
 FetchContent_Declare(
   reshade
   GIT_REPOSITORY "https://github.com/crosire/reshade.git"
   GIT_TAG "v4.9.0") # max supported by vkBasalt version now
 
+FetchContent_Declare(
+  stb
+  GIT_REPOSITORY "https://github.com/nothings/stb.git"
+  GIT_TAG "master")
+
 FetchContent_Populate(reshade)
+FetchContent_Populate(stb)
 
 add_library(vkBasalt_reshade INTERFACE)
 
@@ -24,9 +32,25 @@ target_sources(
          BASE_DIRS
          ${reshade_SOURCE_DIR}/source
          FILES
-         # ${reshade_SOURCE_DIR}/source/effect_token.hpp
          ${reshade_SOURCE_DIR}/source/effect_expression.hpp
-         ${reshade_SOURCE_DIR}/source/effect_module.hpp)
+         ${reshade_SOURCE_DIR}/source/effect_module.hpp
+  PUBLIC FILE_SET
+         stb_image_dds_headers
+         TYPE
+         HEADERS
+         BASE_DIRS
+         ${reshade_SOURCE_DIR}/deps/stb_image_dds
+         FILES
+         ${reshade_SOURCE_DIR}/deps/stb_image_dds/stb_image_dds.h
+  PUBLIC FILE_SET
+         stb_headers
+         TYPE
+         HEADERS
+         BASE_DIRS
+         ${reshade_SOURCE_DIR}/deps/stb
+         FILES
+         ${reshade_SOURCE_DIR}/deps/stb/stb_image.h
+         ${reshade_SOURCE_DIR}/deps/stb/stb_image_resize.h)
 
 # ===============================================================================
 # Subprojects
@@ -146,10 +170,7 @@ target_sources(
           ${CMAKE_CURRENT_LIST_DIR}/shader_sources.hpp
           ${CMAKE_CURRENT_LIST_DIR}/shader.hpp
           ${CMAKE_CURRENT_LIST_DIR}/shader.cpp
-          ${CMAKE_CURRENT_LIST_DIR}/stb_image_dds.h
-          ${CMAKE_CURRENT_LIST_DIR}/stb_image_resize.h
           ${CMAKE_CURRENT_LIST_DIR}/stb_image_resize.c
-          ${CMAKE_CURRENT_LIST_DIR}/stb_image.h
           ${CMAKE_CURRENT_LIST_DIR}/stb_image.c
           ${CMAKE_CURRENT_LIST_DIR}/util.hpp
           ${CMAKE_CURRENT_LIST_DIR}/util.cpp
