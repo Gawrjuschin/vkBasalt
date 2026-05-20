@@ -1,80 +1,12 @@
 cmake_minimum_required(VERSION 3.31)
 
 # ===============================================================================
-# Reshade Came with Stb dependency
-# ===============================================================================
-# TODO: better solution
-cmake_policy(SET CMP0169 OLD)
-
-include(FetchContent)
-
-FetchContent_Declare(
-  reshade
-  GIT_REPOSITORY "https://github.com/crosire/reshade.git"
-  GIT_TAG "v4.9.0") # max supported by vkBasalt version now
-
-FetchContent_Declare(
-  stb
-  GIT_REPOSITORY "https://github.com/nothings/stb.git"
-  GIT_TAG "master")
-
-FetchContent_Populate(reshade)
-FetchContent_Populate(stb)
-
-add_library(vkBasalt_reshade INTERFACE)
-
-target_sources(
-  vkBasalt_reshade
-  PUBLIC FILE_SET
-         reshade_headers
-         TYPE
-         HEADERS
-         BASE_DIRS
-         ${reshade_SOURCE_DIR}/source
-         FILES
-         ${reshade_SOURCE_DIR}/source/effect_expression.hpp
-         ${reshade_SOURCE_DIR}/source/effect_module.hpp
-  PUBLIC FILE_SET
-         stb_image_dds_headers
-         TYPE
-         HEADERS
-         BASE_DIRS
-         ${reshade_SOURCE_DIR}/deps/stb_image_dds
-         FILES
-         ${reshade_SOURCE_DIR}/deps/stb_image_dds/stb_image_dds.h
-  PUBLIC FILE_SET
-         stb_headers
-         TYPE
-         HEADERS
-         BASE_DIRS
-         ${reshade_SOURCE_DIR}/deps/stb
-         FILES
-         ${reshade_SOURCE_DIR}/deps/stb/stb_image.h
-         ${reshade_SOURCE_DIR}/deps/stb/stb_image_resize.h)
-
-# ===============================================================================
 # Subprojects
 # ===============================================================================
 add_subdirectory(shader/)
-
-# ===============================================================================
-# X11 support library hides includes
-# ===============================================================================
-# TODO: better place
-add_library(vkBasalt_x11_input OBJECT)
-target_sources(
-  vkBasalt_x11_input
-  PRIVATE ${CMAKE_CURRENT_LIST_DIR}/keyboard_input_x11.cpp
-  PUBLIC FILE_SET HEADERS FILES
-         ${CMAKE_CURRENT_LIST_DIR}/keyboard_input_x11.hpp)
-target_link_libraries(vkBasalt_x11_input PUBLIC X11::X11)
-set_target_properties(
-  vkBasalt_x11_input
-  PROPERTIES POSITION_INDEPENDENT_CODE TRUE # Enables PIC
-             C_VISIBILITY_PRESET hidden # Hides symbols
-             CXX_VISIBILITY_PRESET hidden # Hides symbols
-             VISIBILITY_INLINES_HIDDEN ON # Hides inlined functions
-)
+add_subdirectory(reshade/)
+add_subdirectory(keyboard_input/)
+add_subdirectory(logger/)
 
 # ===============================================================================
 # Main library (VkLayer)
@@ -150,10 +82,6 @@ target_sources(
           ${CMAKE_CURRENT_LIST_DIR}/image_view.cpp
           ${CMAKE_CURRENT_LIST_DIR}/image.hpp
           ${CMAKE_CURRENT_LIST_DIR}/image.cpp
-          ${CMAKE_CURRENT_LIST_DIR}/keyboard_input.hpp
-          ${CMAKE_CURRENT_LIST_DIR}/keyboard_input.cpp
-          ${CMAKE_CURRENT_LIST_DIR}/logger.hpp
-          ${CMAKE_CURRENT_LIST_DIR}/logger.cpp
           ${CMAKE_CURRENT_LIST_DIR}/logical_device.hpp
           ${CMAKE_CURRENT_LIST_DIR}/logical_swapchain.hpp
           ${CMAKE_CURRENT_LIST_DIR}/logical_swapchain.cpp
@@ -170,8 +98,6 @@ target_sources(
           ${CMAKE_CURRENT_LIST_DIR}/shader_sources.hpp
           ${CMAKE_CURRENT_LIST_DIR}/shader.hpp
           ${CMAKE_CURRENT_LIST_DIR}/shader.cpp
-          ${CMAKE_CURRENT_LIST_DIR}/stb_image_resize.c
-          ${CMAKE_CURRENT_LIST_DIR}/stb_image.c
           ${CMAKE_CURRENT_LIST_DIR}/util.hpp
           ${CMAKE_CURRENT_LIST_DIR}/util.cpp
           ${CMAKE_CURRENT_LIST_DIR}/vkdispatch.hpp
@@ -190,5 +116,6 @@ set_target_properties(
 )
 
 target_link_libraries(
-  vkBasalt_vkBasalt PRIVATE Vulkan::Headers vkBasalt_x11_input vkBasalt_shader
-                            vkBasalt_reshade)
+  vkBasalt_vkBasalt
+  PRIVATE Vulkan::Headers vkBasalt_logger vkBasalt_keyboard_input
+          vkBasalt_shader vkBasalt_reshade)
