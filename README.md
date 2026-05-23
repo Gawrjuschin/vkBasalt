@@ -14,10 +14,7 @@ It is also possible to use Reshade Fx shaders.
 This is one of my first projects ever, so expect it to have bugs. Use it at your own risk.
 
 ## TODOs
-- System-wide config in /etc/vulkan/implicit_layer.d/
-- Better install dirs (cmake tweak)
 - CMake packaging
-- Get SMAA files with fetchcontent
 - use spdlog
 - reload config hotkey, better hotkeys API
 - refactoring and modernization of C++ code
@@ -28,7 +25,7 @@ This is one of my first projects ever, so expect it to have bugs. Use it at your
 
 ### Dependencies
 Before building, you will need:
-- GCC >= 9
+- GCC >= 12
 - X11 development files
 - glslang
 - SPIR-V Headers
