@@ -23,19 +23,19 @@ FetchContent_MakeAvailable(smaa fxaa)
 # ===============================================================================
 # Shaders generation macro
 # ===============================================================================
-macro(target_generate_shaders target)
+function(target_generate_shaders target)
   set(FILE_NAMES "${ARGN}")
   set(headers_list "")
 
   foreach(FILE IN LISTS FILE_NAMES)
     add_custom_command(
-      OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FILE}.h"
+      OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/${FILE}.h"
       COMMAND
         Vulkan::glslc -I "${smaa_SOURCE_DIR}" -I "${fxaa_SOURCE_DIR}" -mfmt=num
         "${CMAKE_CURRENT_LIST_DIR}/${FILE}" -o
-        "${CMAKE_CURRENT_BINARY_DIR}/${FILE}.h"
-      VERBATIM)
-    list(APPEND headers_list "${CMAKE_CURRENT_BINARY_DIR}/${FILE}.h")
+        "${CMAKE_CURRENT_BINARY_DIR}/generated/${FILE}.h"
+      VERBATIM CODEGEN)
+    list(APPEND headers_list "${CMAKE_CURRENT_BINARY_DIR}/generated/${FILE}.h")
   endforeach()
 
   target_sources(
@@ -45,10 +45,10 @@ macro(target_generate_shaders target)
            TYPE
            HEADERS
            BASE_DIRS
-           ${CMAKE_CURRENT_BINARY_DIR}
+           ${CMAKE_CURRENT_BINARY_DIR}/generated
            FILES
            "${headers_list}")
-endmacro()
+endfunction()
 
 # ===============================================================================
 # Generated shaders library
