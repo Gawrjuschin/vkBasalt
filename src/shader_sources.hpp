@@ -1,59 +1,59 @@
 #pragma once
 
-#include <vector>
+#include <array>
 #include <cstdint>
 
 namespace vkBasalt
 {
-    const std::vector<uint32_t> cas_frag = {
-#include "cas.frag.h"
-    };
+    constexpr static auto cas_frag = std::to_array<std::uint32_t>({
+#include <cas.frag.spv>
+    });
 
-    const std::vector<uint32_t> deband_frag = {
-#include "deband.frag.h"
-    };
+    constexpr static auto deband_frag = std::to_array<std::uint32_t>({
+#include <deband.frag.spv>
+    });
 
-    const std::vector<uint32_t> dls_frag = {
-#include "dls.frag.h"
-    };
+    constexpr static auto dls_frag = std::to_array<std::uint32_t>({
+#include <dls.frag.spv>
+    });
 
-    const std::vector<uint32_t> full_screen_triangle_vert = {
-#include "full_screen_triangle.vert.h"
-    };
+    constexpr static auto full_screen_triangle_vert = std::to_array<std::uint32_t>({
+#include <full_screen_triangle.vert.spv>
+    });
 
-    const std::vector<uint32_t> fxaa_frag = {
-#include "fxaa.frag.h"
-    };
+    constexpr static auto fxaa_frag = std::to_array<std::uint32_t>({
+#include <fxaa.frag.spv>
+    });
 
-    const std::vector<uint32_t> lut_frag = {
-#include "lut.frag.h"
-    };
+    constexpr static auto lut_frag = std::to_array<std::uint32_t>({
+#include <lut.frag.spv>
+    });
 
-    const std::vector<uint32_t> smaa_blend_frag = {
-#include "smaa_blend.frag.h"
-    };
+    constexpr static auto smaa_blend_frag = std::to_array<std::uint32_t>({
+#include <smaa_blend.frag.spv>
+    });
 
-    const std::vector<uint32_t> smaa_blend_vert = {
-#include "smaa_blend.vert.h"
-    };
+    constexpr static auto smaa_blend_vert = std::to_array<std::uint32_t>({
+#include <smaa_blend.vert.spv>
+    });
 
-    const std::vector<uint32_t> smaa_edge_color_frag = {
-#include "smaa_edge_color.frag.h"
-    };
+    constexpr static auto smaa_edge_color_frag = std::to_array<std::uint32_t>({
+#include <smaa_edge_color.frag.spv>
+    });
 
-    const std::vector<uint32_t> smaa_edge_luma_frag = {
-#include "smaa_edge_luma.frag.h"
-    };
+    constexpr static auto smaa_edge_luma_frag = std::to_array<std::uint32_t>({
+#include <smaa_edge_luma.frag.spv>
+    });
 
-    const std::vector<uint32_t> smaa_edge_vert = {
-#include "smaa_edge.vert.h"
-    };
+    constexpr static auto smaa_edge_vert = std::to_array<std::uint32_t>({
+#include <smaa_edge.vert.spv>
+    });
 
-    const std::vector<uint32_t> smaa_neighbor_frag = {
-#include "smaa_neighbor.frag.h"
-    };
+    constexpr static auto smaa_neighbor_frag = std::to_array<std::uint32_t>({
+#include <smaa_neighbor.frag.spv>
+    });
 
-    const std::vector<uint32_t> smaa_neighbor_vert = {
-#include "smaa_neighbor.vert.h"
-    };
+    constexpr static auto smaa_neighbor_vert = std::to_array<std::uint32_t>({
+#include <smaa_neighbor.vert.spv>
+    });
 } // namespace vkBasalt

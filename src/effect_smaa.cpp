@@ -122,8 +122,8 @@ namespace vkBasalt
 
         bool useColor = pConfig->getOption<std::string>("smaaEdgeDetection", "luma") == "color";
 
-        auto shaderCode = useColor ? smaa_edge_color_frag : smaa_edge_luma_frag;
-        createShaderModule(pLogicalDevice, shaderCode, &edgeFragmentModule);
+        useColor ? createShaderModule(pLogicalDevice, smaa_edge_color_frag, &edgeFragmentModule)
+                 : createShaderModule(pLogicalDevice, smaa_edge_luma_frag, &edgeFragmentModule);
 
         createShaderModule(pLogicalDevice, smaa_blend_vert, &blendVertexModule);
 

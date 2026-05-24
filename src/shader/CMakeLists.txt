@@ -29,13 +29,14 @@ function(target_generate_shaders target)
 
   foreach(FILE IN LISTS FILE_NAMES)
     add_custom_command(
-      OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/${FILE}.h"
+      OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/${FILE}.spv"
       COMMAND
         Vulkan::glslc -I "${smaa_SOURCE_DIR}" -I "${fxaa_SOURCE_DIR}" -mfmt=num
         "${CMAKE_CURRENT_LIST_DIR}/${FILE}" -o
-        "${CMAKE_CURRENT_BINARY_DIR}/generated/${FILE}.h"
+        "${CMAKE_CURRENT_BINARY_DIR}/generated/${FILE}.spv"
       VERBATIM CODEGEN)
-    list(APPEND headers_list "${CMAKE_CURRENT_BINARY_DIR}/generated/${FILE}.h")
+    list(APPEND headers_list
+         "${CMAKE_CURRENT_BINARY_DIR}/generated/${FILE}.spv")
   endforeach()
 
   target_sources(
@@ -104,3 +105,7 @@ target_generate_shaders(
   smaa_edge_luma.frag
   smaa_neighbor.frag
   smaa_neighbor.vert)
+
+target_include_directories(
+  vkBasalt_shader
+  INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>")
