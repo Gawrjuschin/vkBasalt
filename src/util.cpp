@@ -44,9 +44,8 @@ namespace vkBasalt
             case Color::white: magicNumbers.push_back("47"); break;
             default: break;
         }
-        std::string magicString = "";
-        bool first = true;
-        for (auto& magicNumber : magicNumbers)
+        std::string magicString;
+        for (bool first = true; auto& magicNumber : magicNumbers)
         {
             if (!first)
             {
