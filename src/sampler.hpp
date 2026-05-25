@@ -11,7 +11,7 @@
 
 #include "logical_device.hpp"
 
-#include "reshade/effect_module.hpp"
+#include <effect_module.hpp>
 namespace vkBasalt
 {
     VkSampler createSampler(LogicalDevice* pLogicalDevice);

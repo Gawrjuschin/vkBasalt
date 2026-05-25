@@ -13,11 +13,21 @@ It is also possible to use Reshade Fx shaders.
 ## Disclaimer
 This is one of my first projects ever, so expect it to have bugs. Use it at your own risk.
 
+## TODOs
+- CMake packaging.
+- Build packages in GitHub pipelines.
+- use spdlog.
+- refactoring and modernization of C++ code.
+- reload config hotkey, better hotkeys API.
+- vulkan code refactoring (Vulkan-HPP).
+- temporal SMAA.
+
 ## Building from Source
 
 ### Dependencies
 Before building, you will need:
-- GCC >= 9
+- CMake >= 4.1 (for proper GNUInstallDirs)
+- GCC >= 12
 - X11 development files
 - glslang
 - SPIR-V Headers
@@ -25,31 +35,25 @@ Before building, you will need:
 
 ### Building
 
-**These instructions use `--prefix=/usr`, which is generally not recommened since vkBasalt will be installed in directories that are meant for the package manager. The alternative is not setting the prefix, it will then be installed in `/usr/local`. But you need to make sure that `ld` finds the library since /usr/local is very likely not in the default path.** 
-
-In general, prefer using distro provided packages.
-
-```
-git clone https://github.com/DadSchoorse/vkBasalt.git
-cd vkBasalt
-```
+**TODO: instructions with simple install and cpack explaination** 
 
 #### 64bit
 
 ```
-meson setup --buildtype=release --prefix=/usr builddir
-ninja -C builddir install
+TODO: build instructions for cmake
 ```
 #### 32bit
 
-Make sure that `PKG_CONFIG_PATH=/usr/lib32/pkgconfig` and `--libdir=lib32` are correct for your distro and change them if needed. On Debian based distros you need to replace `lib32` with `lib/i386-linux-gnu`, for example.
+
 ```
-ASFLAGS=--32 CFLAGS=-m32 CXXFLAGS=-m32 PKG_CONFIG_PATH=/usr/lib32/pkgconfig meson setup --prefix=/usr --buildtype=release --libdir=lib32 -Dwith_json=false builddir.32
-ninja -C builddir.32 install
+TODO: build instructions for cmake (crosscompilation maybe)
 ```
 
 ## Packaging status
+TODO: support packaging for specified systems and more (SteamOS, Bazzite and EndeavourOS distros)
+Requires configuration with -DCMAKE_INSTALL_PREFIX:PATH=/usr for correct pathes
 
+TODO: new build pipeline
 [Debian](https://tracker.debian.org/pkg/vkbasalt) `sudo apt install vkbasalt`
 
 [Fedora](https://src.fedoraproject.org/rpms/vkBasalt) `sudo dnf install vkBasalt`
@@ -58,6 +62,9 @@ ninja -C builddir.32 install
 
 ## Usage
 Enable the layer with the environment variable.
+
+VK_LOADER_LAYERS_ENABLE must be set in your environment (tested on Debian 14):
+VK_LOADER_LAYERS_ENABLE=VK_LAYER_VKBASALT_post_processing
 
 ### Standard
 When using the terminal or an application (.desktop) file, execute:
@@ -79,6 +86,7 @@ ENABLE_VKBASALT=1 %command%
 
 ## Configure
 
+Default config is installed in "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_SYSCONFDIR@/vkBasalt.conf" (that is /usr/local/etc/vkBasalt.conf by default)
 Settings like the CAS sharpening strength can be changed in the config file.
 The config file will be searched for in the following locations:
 * a file set with the environment variable`VKBASALT_CONFIG_FILE=/path/to/vkBasalt.conf`
@@ -93,6 +101,7 @@ If you want to make changes for one game only, you can create a file named `vkBa
 
 #### Reshade Fx shaders
 
+TODO: provide support for actual version of reshade repo.
 To run reshade fx shaders e.g. shaders from the [reshade repo](https://github.com/crosire/reshade-shaders), you have to set `reshadeTexturePath` and `reshadeIncludePath` to the matching dirctories from the repo. To then use a specific shader you need to set a custom effect name to the shader path and then add that effect name to `effects` like every other effect.
 
 ```ini
@@ -106,10 +115,14 @@ reshadeIncludePath = /home/user/reshade-shaders/Shaders
 
 #### Ingame Input
 
+TODO: more solid solution
+
 The [HOME key](https://en.wikipedia.org/wiki/Home_key) can be used to disable and re-enable the applied effects, the key can also be changed in the config file. This is based on X11 so it won't work on pure wayland. It **should** however at least not crash without X11.
 
 
 #### Debug Output
+
+TODO: use spdlog instead of custom logging solution.
 
 The amount of debug output can be set with the `VKBASALT_LOG_LEVEL` env var, e.g. `VKBASALT_LOG_LEVEL=debug`. Possible values are: `trace, debug, info, warn, error, none`.
 

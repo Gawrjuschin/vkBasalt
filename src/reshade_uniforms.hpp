@@ -10,7 +10,7 @@
 
 #include "vulkan_include.hpp"
 
-#include "reshade/effect_module.hpp"
+#include <effect_module.hpp>
 
 namespace vkBasalt
 {

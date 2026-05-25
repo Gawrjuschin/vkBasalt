@@ -3,13 +3,12 @@
 
 #define VK_NO_PROTOTYPES
 
-#pragma GCC system_header
-#include "vulkan/vulkan.h"
-#include "vulkan/vk_layer.h"
+#include <vulkan/vulkan.h>
+#include <vulkan/vk_layer.h>
 
 #include <string>
 
-#include "logger.hpp"
+#include <logger.hpp>
 
 #ifndef ASSERT_VULKAN
 #define ASSERT_VULKAN(val) \

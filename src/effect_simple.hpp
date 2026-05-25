@@ -1,6 +1,7 @@
 #ifndef EFFECT_SIMPLE_HPP_INCLUDED
 #define EFFECT_SIMPLE_HPP_INCLUDED
 #include <vector>
+#include <span>
 #include <fstream>
 #include <string>
 #include <iostream>
@@ -43,8 +44,8 @@ namespace vkBasalt
         VkFormat                     format;
         VkSampler                    sampler;
         Config*                      pConfig;
-        std::vector<uint32_t>        vertexCode;
-        std::vector<uint32_t>        fragmentCode;
+        std::span<const uint32_t>    vertexCode;
+        std::span<const uint32_t>    fragmentCode;
         VkSpecializationInfo*        pVertexSpecInfo;
         VkSpecializationInfo*        pFragmentSpecInfo;
 

@@ -39,13 +39,9 @@
 #include "effect_reshade.hpp"
 #include "effect_transfer.hpp"
 
-#define VKBASALT_NAME "VK_LAYER_VKBASALT_post_processing"
+#include <vkbasalt_export.h>
 
-#if defined(__GNUC__) && __GNUC__ >= 4
-#define VK_BASALT_EXPORT __attribute__((visibility("default")))
-#else
-#error "Unsupported platform!"
-#endif
+#define VKBASALT_NAME "VK_LAYER_VKBASALT_post_processing"
 
 namespace vkBasalt
 {
@@ -819,6 +815,7 @@ namespace vkBasalt
             }
 
             scoped_lock l(globalLock);
+            // TODO: prevent nullptr access
             return instanceDispatchMap[GetKey(physicalDevice)].EnumerateDeviceExtensionProperties(
                 physicalDevice, pLayerName, pPropertyCount, pProperties);
         }
@@ -835,12 +832,12 @@ namespace vkBasalt
 extern "C"
 { // these are the entry points for the layer, so they need to be c-linkeable
 
-    VK_BASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetDeviceProcAddr(VkDevice device, const char* pName);
-    VK_BASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetInstanceProcAddr(VkInstance instance, const char* pName);
+    VKBASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetDeviceProcAddr(VkDevice device, const char* pName);
+    VKBASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetInstanceProcAddr(VkInstance instance, const char* pName);
 
 #define GETPROCADDR(func) \
     if (!std::strcmp(pName, "vk" #func)) \
-        return (PFN_vkVoidFunction) &vkBasalt::vkBasalt_##func;
+        return (PFN_vkVoidFunction) & vkBasalt::vkBasalt_##func;
     /*
     Return our funktions for the funktions we want to intercept
     the macro takes the name and returns our vkBasalt_##func, if the name is equal
@@ -850,7 +847,7 @@ extern "C"
 #define INTERCEPT_CALLS \
     /* instance chain functions we intercept */ \
     if (!std::strcmp(pName, "vkGetInstanceProcAddr")) \
-        return (PFN_vkVoidFunction) &vkBasalt_GetInstanceProcAddr; \
+        return (PFN_vkVoidFunction) & vkBasalt_GetInstanceProcAddr; \
     GETPROCADDR(EnumerateInstanceLayerProperties); \
     GETPROCADDR(EnumerateInstanceExtensionProperties); \
     GETPROCADDR(CreateInstance); \
@@ -858,7 +855,7 @@ extern "C"
 \
     /* device chain functions we intercept*/ \
     if (!std::strcmp(pName, "vkGetDeviceProcAddr")) \
-        return (PFN_vkVoidFunction) &vkBasalt_GetDeviceProcAddr; \
+        return (PFN_vkVoidFunction) & vkBasalt_GetDeviceProcAddr; \
     GETPROCADDR(EnumerateDeviceLayerProperties); \
     GETPROCADDR(EnumerateDeviceExtensionProperties); \
     GETPROCADDR(CreateDevice); \
@@ -875,7 +872,7 @@ extern "C"
         GETPROCADDR(BindImageMemory); \
     }
 
-    VK_BASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetDeviceProcAddr(VkDevice device, const char* pName)
+    VKBASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetDeviceProcAddr(VkDevice device, const char* pName)
     {
         if (vkBasalt::pConfig == nullptr)
         {
@@ -886,11 +883,16 @@ extern "C"
 
         {
             vkBasalt::scoped_lock l(vkBasalt::globalLock);
-            return vkBasalt::deviceMap[vkBasalt::GetKey(device)]->vkd.GetDeviceProcAddr(device, pName);
+            if (const auto deviceIt{vkBasalt::deviceMap.find(vkBasalt::GetKey(device))}; deviceIt != std::cend(vkBasalt::deviceMap))
+            {
+                return deviceIt->second->vkd.GetDeviceProcAddr(device, pName);
+            }
+
+            return nullptr;
         }
     }
 
-    VK_BASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetInstanceProcAddr(VkInstance instance, const char* pName)
+    VKBASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetInstanceProcAddr(VkInstance instance, const char* pName)
     {
         if (vkBasalt::pConfig == nullptr)
         {
@@ -901,7 +903,14 @@ extern "C"
 
         {
             vkBasalt::scoped_lock l(vkBasalt::globalLock);
-            return vkBasalt::instanceDispatchMap[vkBasalt::GetKey(instance)].GetInstanceProcAddr(instance, pName);
+            // TODO: prevent nullptr access
+            if (const auto instanceIt{vkBasalt::instanceDispatchMap.find(vkBasalt::GetKey(instance))};
+                instanceIt != std::cend(vkBasalt::instanceDispatchMap))
+            {
+                return instanceIt->second.GetInstanceProcAddr(instance, pName);
+            }
+
+            return nullptr;
         }
     }
 
