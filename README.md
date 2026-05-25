@@ -14,17 +14,19 @@ It is also possible to use Reshade Fx shaders.
 This is one of my first projects ever, so expect it to have bugs. Use it at your own risk.
 
 ## TODOs
-- CMake packaging
-- use spdlog
-- reload config hotkey, better hotkeys API
-- refactoring and modernization of C++ code
-- vulkan code refactoring
-- temporal SMAA
+- CMake packaging.
+- Build packages in GitHub pipelines.
+- use spdlog.
+- refactoring and modernization of C++ code.
+- reload config hotkey, better hotkeys API.
+- vulkan code refactoring (Vulkan-HPP).
+- temporal SMAA.
 
 ## Building from Source
 
 ### Dependencies
 Before building, you will need:
+- CMake >= 4.1 (for proper GNUInstallDirs)
 - GCC >= 12
 - X11 development files
 - glslang
@@ -33,29 +35,18 @@ Before building, you will need:
 
 ### Building
 
-**These instructions use `--prefix=/usr`, which is generally not recommened since vkBasalt will be installed in directories that are meant for the package manager. The alternative is not setting the prefix, it will then be installed in `/usr/local`. But you need to make sure that `ld` finds the library since /usr/local is very likely not in the default path.** 
-
-In general, prefer using distro provided packages.
-TODO: packaging for new version
-
-```
-git clone https://github.com/DadSchoorse/vkBasalt.git
-cd vkBasalt
-```
+**TODO: instructions with simple install and cpack explaination** 
 
 #### 64bit
-TODO: build instructions for cmake, delete meson files from project
+
 ```
-meson setup --buildtype=release --prefix=/usr builddir
-ninja -C builddir install
+TODO: build instructions for cmake
 ```
 #### 32bit
-TODO: build instructions for cmake, delete meson files from project
 
-Make sure that `PKG_CONFIG_PATH=/usr/lib32/pkgconfig` and `--libdir=lib32` are correct for your distro and change them if needed. On Debian based distros you need to replace `lib32` with `lib/i386-linux-gnu`, for example.
+
 ```
-ASFLAGS=--32 CFLAGS=-m32 CXXFLAGS=-m32 PKG_CONFIG_PATH=/usr/lib32/pkgconfig meson setup --prefix=/usr --buildtype=release --libdir=lib32 -Dwith_json=false builddir.32
-ninja -C builddir.32 install
+TODO: build instructions for cmake (crosscompilation maybe)
 ```
 
 ## Packaging status
@@ -110,6 +101,7 @@ If you want to make changes for one game only, you can create a file named `vkBa
 
 #### Reshade Fx shaders
 
+TODO: provide support for actual version of reshade repo.
 To run reshade fx shaders e.g. shaders from the [reshade repo](https://github.com/crosire/reshade-shaders), you have to set `reshadeTexturePath` and `reshadeIncludePath` to the matching dirctories from the repo. To then use a specific shader you need to set a custom effect name to the shader path and then add that effect name to `effects` like every other effect.
 
 ```ini
@@ -124,10 +116,13 @@ reshadeIncludePath = /home/user/reshade-shaders/Shaders
 #### Ingame Input
 
 TODO: more solid solution
+
 The [HOME key](https://en.wikipedia.org/wiki/Home_key) can be used to disable and re-enable the applied effects, the key can also be changed in the config file. This is based on X11 so it won't work on pure wayland. It **should** however at least not crash without X11.
 
 
 #### Debug Output
+
+TODO: use spdlog instead of custom logging solution.
 
 The amount of debug output can be set with the `VKBASALT_LOG_LEVEL` env var, e.g. `VKBASALT_LOG_LEVEL=debug`. Possible values are: `trace, debug, info, warn, error, none`.
 
