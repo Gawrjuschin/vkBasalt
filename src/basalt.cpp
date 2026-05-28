@@ -52,7 +52,7 @@ namespace vkBasalt
         uint32_t         version{};
     };
     std::unordered_map<void*, InstanceData>                               instanceMap;
-    std::unordered_map<void*, std::shared_ptr<LogicalDevice>>             deviceMap;
+    std::unordered_map<void*, LogicalDevice>                              deviceMap;
     std::unordered_map<VkSwapchainKHR, std::shared_ptr<LogicalSwapchain>> swapchainMap;
 
     std::mutex globalLock;
@@ -131,7 +131,10 @@ namespace vkBasalt
     void VKAPI_CALL vkBasalt_DestroyInstance(VkInstance instance, const VkAllocationCallbacks* pAllocator)
     {
         if (!instance)
+        {
+            Logger::err("null instance");
             return;
+        }
 
         std::scoped_lock lock(globalLock);
 
@@ -236,31 +239,32 @@ namespace vkBasalt
         if (ret != VK_SUCCESS)
             return ret;
 
-        std::shared_ptr<LogicalDevice> pLogicalDevice(new LogicalDevice());
-        pLogicalDevice->vki                   = instanceData.dispatch;
-        pLogicalDevice->device                = *pDevice;
-        pLogicalDevice->physicalDevice        = physicalDevice;
-        pLogicalDevice->instance              = static_cast<VkInstance>(instanceKey);
-        pLogicalDevice->queue                 = VK_NULL_HANDLE;
-        pLogicalDevice->queueFamilyIndex      = 0;
-        pLogicalDevice->commandPool           = VK_NULL_HANDLE;
-        pLogicalDevice->supportsMutableFormat = supportsMutableFormat;
+        LogicalDevice logicalDevice{
+            .vki                   = instanceData.dispatch,
+            .device                = *pDevice,
+            .physicalDevice        = physicalDevice,
+            .instance              = static_cast<VkInstance>(instanceKey),
+            .queue                 = VK_NULL_HANDLE,
+            .queueFamilyIndex      = 0,
+            .commandPool           = VK_NULL_HANDLE,
+            .supportsMutableFormat = supportsMutableFormat,
+        };
 
-        fillDispatchTableDevice(*pDevice, gdpa, &pLogicalDevice->vkd);
+        fillDispatchTableDevice(*pDevice, gdpa, &logicalDevice.vkd);
 
         uint32_t count;
 
-        pLogicalDevice->vki.GetPhysicalDeviceQueueFamilyProperties(pLogicalDevice->physicalDevice, &count, nullptr);
+        logicalDevice.vki.GetPhysicalDeviceQueueFamilyProperties(logicalDevice.physicalDevice, &count, nullptr);
 
         std::vector<VkQueueFamilyProperties> queueProperties(count);
 
-        pLogicalDevice->vki.GetPhysicalDeviceQueueFamilyProperties(pLogicalDevice->physicalDevice, &count, queueProperties.data());
+        logicalDevice.vki.GetPhysicalDeviceQueueFamilyProperties(logicalDevice.physicalDevice, &count, queueProperties.data());
         for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++)
         {
             auto& queueInfo = pCreateInfo->pQueueCreateInfos[i];
             if ((queueProperties[queueInfo.queueFamilyIndex].queueFlags & VK_QUEUE_GRAPHICS_BIT))
             {
-                pLogicalDevice->vkd.GetDeviceQueue(pLogicalDevice->device, queueInfo.queueFamilyIndex, 0, &pLogicalDevice->queue);
+                logicalDevice.vkd.GetDeviceQueue(logicalDevice.device, queueInfo.queueFamilyIndex, 0, &logicalDevice.queue);
 
                 VkCommandPoolCreateInfo commandPoolCreateInfo;
                 commandPoolCreateInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -269,19 +273,21 @@ namespace vkBasalt
                 commandPoolCreateInfo.queueFamilyIndex = queueInfo.queueFamilyIndex;
 
                 Logger::debug("Found graphics capable queue");
-                pLogicalDevice->vkd.CreateCommandPool(pLogicalDevice->device, &commandPoolCreateInfo, nullptr, &pLogicalDevice->commandPool);
-                pLogicalDevice->queueFamilyIndex = queueInfo.queueFamilyIndex;
+                logicalDevice.vkd.CreateCommandPool(logicalDevice.device, &commandPoolCreateInfo, nullptr, &logicalDevice.commandPool);
+                logicalDevice.queueFamilyIndex = queueInfo.queueFamilyIndex;
 
-                initializeDispatchTable(pLogicalDevice->queue, pLogicalDevice->device);
+                initializeDispatchTable(logicalDevice.queue, logicalDevice.device);
 
                 break;
             }
         }
 
-        if (!pLogicalDevice->queue)
+        if (!logicalDevice.queue)
+        {
             Logger::err("Did not find a graphics queue!");
+        }
 
-        deviceMap[GetKey(*pDevice)] = pLogicalDevice;
+        deviceMap.emplace(GetKey(*pDevice), std::move(logicalDevice));
 
         return VK_SUCCESS;
     }
@@ -289,20 +295,30 @@ namespace vkBasalt
     void VKAPI_CALL vkBasalt_DestroyDevice(VkDevice device, const VkAllocationCallbacks* pAllocator)
     {
         if (!device)
+        {
+            Logger::err("null device");
             return;
+        }
 
         std::scoped_lock lock(globalLock);
 
         Logger::trace("vkDestroyDevice");
 
-        LogicalDevice* pLogicalDevice = deviceMap[GetKey(device)].get();
-        if (pLogicalDevice->commandPool != VK_NULL_HANDLE)
+        const auto deviceIt{deviceMap.find(GetKey(device))};
+        if (deviceIt == std::cend(deviceMap))
         {
-            Logger::debug("DestroyCommandPool");
-            pLogicalDevice->vkd.DestroyCommandPool(device, pLogicalDevice->commandPool, pAllocator);
+            Logger::err("could not find device in map");
+            return;
         }
 
-        pLogicalDevice->vkd.DestroyDevice(device, pAllocator);
+        auto& [_, logicalDevice] = *deviceIt;
+        if (logicalDevice.commandPool != VK_NULL_HANDLE)
+        {
+            Logger::debug("DestroyCommandPool");
+            logicalDevice.vkd.DestroyCommandPool(device, logicalDevice.commandPool, pAllocator);
+        }
+
+        logicalDevice.vkd.DestroyDevice(device, pAllocator);
 
         deviceMap.erase(GetKey(device));
     }
@@ -316,7 +332,12 @@ namespace vkBasalt
 
         Logger::trace("vkCreateSwapchainKHR");
 
-        LogicalDevice* pLogicalDevice = deviceMap[GetKey(device)].get();
+        const auto deviceIt{deviceMap.find(GetKey(device))};
+        if (deviceIt == std::cend(deviceMap))
+        {
+            return VK_ERROR_UNKNOWN;
+        }
+        auto& [_, logicalDevice] = *deviceIt;
 
         VkSwapchainCreateInfoKHR modifiedCreateInfo = *pCreateInfo;
 
@@ -329,7 +350,7 @@ namespace vkBasalt
         VkFormat formats[] = {unormFormat, srgbFormat};
 
         VkImageFormatListCreateInfoKHR imageFormatListCreateInfo;
-        if (pLogicalDevice->supportsMutableFormat)
+        if (logicalDevice.supportsMutableFormat)
         {
             modifiedCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
                                             | VK_IMAGE_USAGE_SAMPLED_BIT; // we want to use the swapchain images as output of the graphics pipeline
@@ -348,13 +369,13 @@ namespace vkBasalt
 
         Logger::debug("format " + std::to_string(modifiedCreateInfo.imageFormat));
         std::shared_ptr<LogicalSwapchain> pLogicalSwapchain(new LogicalSwapchain());
-        pLogicalSwapchain->pLogicalDevice      = pLogicalDevice;
+        pLogicalSwapchain->pLogicalDevice      = std::addressof(logicalDevice);
         pLogicalSwapchain->swapchainCreateInfo = *pCreateInfo;
         pLogicalSwapchain->imageExtent         = modifiedCreateInfo.imageExtent;
         pLogicalSwapchain->format              = modifiedCreateInfo.imageFormat;
         pLogicalSwapchain->imageCount          = 0;
 
-        VkResult result = pLogicalDevice->vkd.CreateSwapchainKHR(device, &modifiedCreateInfo, pAllocator, pSwapchain);
+        VkResult result = logicalDevice.vkd.CreateSwapchainKHR(device, &modifiedCreateInfo, pAllocator, pSwapchain);
 
         swapchainMap[*pSwapchain] = pLogicalSwapchain;
 
@@ -369,11 +390,16 @@ namespace vkBasalt
         std::scoped_lock lock(globalLock);
         Logger::trace("vkGetSwapchainImagesKHR " + std::to_string(*pCount));
 
-        LogicalDevice* pLogicalDevice = deviceMap[GetKey(device)].get();
+        const auto deviceIt{deviceMap.find(GetKey(device))};
+        if (deviceIt == std::cend(deviceMap))
+        {
+            return VK_ERROR_UNKNOWN;
+        }
+        auto& [_, logicalDevice] = *deviceIt;
 
         if (pSwapchainImages == nullptr)
         {
-            return pLogicalDevice->vkd.GetSwapchainImagesKHR(device, swapchain, pCount, pSwapchainImages);
+            return logicalDevice.vkd.GetSwapchainImagesKHR(device, swapchain, pCount, pSwapchainImages);
         }
 
         LogicalSwapchain* pLogicalSwapchain = swapchainMap[swapchain].get();
@@ -386,17 +412,17 @@ namespace vkBasalt
             return *pCount < pLogicalSwapchain->imageCount ? VK_INCOMPLETE : VK_SUCCESS;
         }
 
-        pLogicalDevice->vkd.GetSwapchainImagesKHR(device, swapchain, &pLogicalSwapchain->imageCount, nullptr);
+        logicalDevice.vkd.GetSwapchainImagesKHR(device, swapchain, &pLogicalSwapchain->imageCount, nullptr);
         pLogicalSwapchain->images.resize(pLogicalSwapchain->imageCount);
-        pLogicalDevice->vkd.GetSwapchainImagesKHR(device, swapchain, &pLogicalSwapchain->imageCount, pLogicalSwapchain->images.data());
+        logicalDevice.vkd.GetSwapchainImagesKHR(device, swapchain, &pLogicalSwapchain->imageCount, pLogicalSwapchain->images.data());
 
         std::vector<std::string> effectStrings = pConfig->getOption<std::vector<std::string>>("effects", {"cas"});
 
         // create 1 more set of images when we can't use the swapchain it self
-        uint32_t fakeImageCount = pLogicalSwapchain->imageCount * (effectStrings.size() + !pLogicalDevice->supportsMutableFormat);
+        uint32_t fakeImageCount = pLogicalSwapchain->imageCount * (effectStrings.size() + !logicalDevice.supportsMutableFormat);
 
-        pLogicalSwapchain->fakeImages =
-            createFakeSwapchainImages(pLogicalDevice, pLogicalSwapchain->swapchainCreateInfo, fakeImageCount, pLogicalSwapchain->fakeImageMemory);
+        pLogicalSwapchain->fakeImages = createFakeSwapchainImages(
+            std::addressof(logicalDevice), pLogicalSwapchain->swapchainCreateInfo, fakeImageCount, pLogicalSwapchain->fakeImageMemory);
         Logger::debug("created fake swapchain images");
 
         VkFormat unormFormat = convertToUNORM(pLogicalSwapchain->format);
@@ -411,7 +437,7 @@ namespace vkBasalt
             std::vector<VkImage> secondImages;
             if (i == effectStrings.size() - 1)
             {
-                secondImages = pLogicalDevice->supportsMutableFormat
+                secondImages = logicalDevice.supportsMutableFormat
                                    ? pLogicalSwapchain->images
                                    : std::vector<VkImage>(pLogicalSwapchain->fakeImages.end() - pLogicalSwapchain->imageCount,
                                                           pLogicalSwapchain->fakeImages.end());
@@ -426,43 +452,43 @@ namespace vkBasalt
             Logger::debug(std::to_string(secondImages.size()) + " images in secondImages");
             if (effectStrings[i] == std::string("fxaa"))
             {
-                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(
-                    new FxaaEffect(pLogicalDevice, srgbFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
+                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(new FxaaEffect(
+                    std::addressof(logicalDevice), srgbFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
                 Logger::debug("created FxaaEffect");
             }
             else if (effectStrings[i] == std::string("cas"))
             {
-                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(
-                    new CasEffect(pLogicalDevice, unormFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
+                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(new CasEffect(
+                    std::addressof(logicalDevice), unormFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
                 Logger::debug("created CasEffect");
             }
             else if (effectStrings[i] == std::string("deband"))
             {
-                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(
-                    new DebandEffect(pLogicalDevice, unormFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
+                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(new DebandEffect(
+                    std::addressof(logicalDevice), unormFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
                 Logger::debug("created DebandEffect");
             }
             else if (effectStrings[i] == std::string("smaa"))
             {
-                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(
-                    new SmaaEffect(pLogicalDevice, unormFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
+                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(new SmaaEffect(
+                    std::addressof(logicalDevice), unormFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
                 Logger::debug("created SmaaEffect");
             }
             else if (effectStrings[i] == std::string("lut"))
             {
-                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(
-                    new LutEffect(pLogicalDevice, unormFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
+                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(new LutEffect(
+                    std::addressof(logicalDevice), unormFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
                 Logger::debug("created LutEffect");
             }
             else if (effectStrings[i] == std::string("dls"))
             {
-                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(
-                    new DlsEffect(pLogicalDevice, unormFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
+                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(new DlsEffect(
+                    std::addressof(logicalDevice), unormFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
                 Logger::debug("created DlsEffect");
             }
             else
             {
-                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(new ReshadeEffect(pLogicalDevice,
+                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(new ReshadeEffect(std::addressof(logicalDevice),
                                                                                                pLogicalSwapchain->format,
                                                                                                pLogicalSwapchain->imageExtent,
                                                                                                firstImages,
@@ -473,10 +499,10 @@ namespace vkBasalt
             }
         }
 
-        if (!pLogicalDevice->supportsMutableFormat)
+        if (!logicalDevice.supportsMutableFormat)
         {
             pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(new TransferEffect(
-                pLogicalDevice,
+                std::addressof(logicalDevice),
                 pLogicalSwapchain->format,
                 pLogicalSwapchain->imageExtent,
                 std::vector<VkImage>(pLogicalSwapchain->fakeImages.end() - pLogicalSwapchain->imageCount, pLogicalSwapchain->fakeImages.end()),
@@ -484,22 +510,26 @@ namespace vkBasalt
                 pConfig.get())));
         }
 
-        VkImageView depthImageView = pLogicalDevice->depthImageViews.size() ? pLogicalDevice->depthImageViews[0] : VK_NULL_HANDLE;
-        VkImage     depthImage     = pLogicalDevice->depthImageViews.size() ? pLogicalDevice->depthImages[0] : VK_NULL_HANDLE;
-        VkFormat    depthFormat    = pLogicalDevice->depthImageViews.size() ? pLogicalDevice->depthFormats[0] : VK_FORMAT_UNDEFINED;
+        VkImageView depthImageView = logicalDevice.depthImageViews.size() ? logicalDevice.depthImageViews[0] : VK_NULL_HANDLE;
+        VkImage     depthImage     = logicalDevice.depthImageViews.size() ? logicalDevice.depthImages[0] : VK_NULL_HANDLE;
+        VkFormat    depthFormat    = logicalDevice.depthImageViews.size() ? logicalDevice.depthFormats[0] : VK_FORMAT_UNDEFINED;
 
         Logger::debug("effect string count: " + std::to_string(effectStrings.size()));
         Logger::debug("effect count: " + std::to_string(pLogicalSwapchain->effects.size()));
 
-        pLogicalSwapchain->commandBuffersEffect = allocateCommandBuffer(pLogicalDevice, pLogicalSwapchain->imageCount);
+        pLogicalSwapchain->commandBuffersEffect = allocateCommandBuffer(std::addressof(logicalDevice), pLogicalSwapchain->imageCount);
         Logger::debug("allocated ComandBuffers " + std::to_string(pLogicalSwapchain->commandBuffersEffect.size()) + " for swapchain "
                       + convertToString(swapchain));
 
-        writeCommandBuffers(
-            pLogicalDevice, pLogicalSwapchain->effects, depthImage, depthImageView, depthFormat, pLogicalSwapchain->commandBuffersEffect);
+        writeCommandBuffers(std::addressof(logicalDevice),
+                            pLogicalSwapchain->effects,
+                            depthImage,
+                            depthImageView,
+                            depthFormat,
+                            pLogicalSwapchain->commandBuffersEffect);
         Logger::debug("wrote CommandBuffers");
 
-        pLogicalSwapchain->semaphores = createSemaphores(pLogicalDevice, pLogicalSwapchain->imageCount);
+        pLogicalSwapchain->semaphores = createSemaphores(std::addressof(logicalDevice), pLogicalSwapchain->imageCount);
         Logger::debug("created semaphores");
         for (unsigned int i = 0; i < pLogicalSwapchain->imageCount; i++)
         {
@@ -508,16 +538,16 @@ namespace vkBasalt
         Logger::trace("vkGetSwapchainImagesKHR");
 
         pLogicalSwapchain->defaultTransfer = std::shared_ptr<Effect>(new TransferEffect(
-            pLogicalDevice,
+            std::addressof(logicalDevice),
             pLogicalSwapchain->format,
             pLogicalSwapchain->imageExtent,
             std::vector<VkImage>(pLogicalSwapchain->fakeImages.begin(), pLogicalSwapchain->fakeImages.begin() + pLogicalSwapchain->imageCount),
             pLogicalSwapchain->images,
             pConfig.get()));
 
-        pLogicalSwapchain->commandBuffersNoEffect = allocateCommandBuffer(pLogicalDevice, pLogicalSwapchain->imageCount);
+        pLogicalSwapchain->commandBuffersNoEffect = allocateCommandBuffer(std::addressof(logicalDevice), pLogicalSwapchain->imageCount);
 
-        writeCommandBuffers(pLogicalDevice,
+        writeCommandBuffers(std::addressof(logicalDevice),
                             {pLogicalSwapchain->defaultTransfer},
                             VK_NULL_HANDLE,
                             VK_NULL_HANDLE,
@@ -556,7 +586,12 @@ namespace vkBasalt
             pressed = false;
         }
 
-        LogicalDevice* pLogicalDevice = deviceMap[GetKey(queue)].get();
+        const auto deviceIt{deviceMap.find(GetKey(queue))};
+        if (deviceIt == std::cend(deviceMap))
+        {
+            return VK_ERROR_UNKNOWN;
+        }
+        auto& [_, logicalDevice] = *deviceIt;
 
         std::vector<VkSemaphore> presentSemaphores;
         presentSemaphores.reserve(pPresentInfo->swapchainCount);
@@ -588,7 +623,7 @@ namespace vkBasalt
 
             presentSemaphores.push_back(pLogicalSwapchain->semaphores[index]);
 
-            VkResult vr = pLogicalDevice->vkd.QueueSubmit(pLogicalDevice->queue, 1, &submitInfo, VK_NULL_HANDLE);
+            VkResult vr = logicalDevice.vkd.QueueSubmit(logicalDevice.queue, 1, &submitInfo, VK_NULL_HANDLE);
 
             if (vr != VK_SUCCESS)
             {
@@ -600,13 +635,16 @@ namespace vkBasalt
         presentInfo.waitSemaphoreCount = presentSemaphores.size();
         presentInfo.pWaitSemaphores    = presentSemaphores.data();
 
-        return pLogicalDevice->vkd.QueuePresentKHR(queue, &presentInfo);
+        return logicalDevice.vkd.QueuePresentKHR(queue, &presentInfo);
     }
 
     VKAPI_ATTR void VKAPI_CALL vkBasalt_DestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapchain, const VkAllocationCallbacks* pAllocator)
     {
         if (!swapchain)
+        {
+            Logger::err("null swapchain");
             return;
+        }
 
         std::scoped_lock lock(globalLock);
         // we need to delete the infos of the oldswapchain
@@ -614,9 +652,11 @@ namespace vkBasalt
         Logger::trace("vkDestroySwapchainKHR " + convertToString(swapchain));
         swapchainMap[swapchain]->destroy();
         swapchainMap.erase(swapchain);
-        LogicalDevice* pLogicalDevice = deviceMap[GetKey(device)].get();
 
-        pLogicalDevice->vkd.DestroySwapchainKHR(device, swapchain, pAllocator);
+        if (const auto deviceIt{deviceMap.find(GetKey(device))}; deviceIt != std::cend(deviceMap))
+        {
+            deviceIt->second.vkd.DestroySwapchainKHR(device, swapchain, pAllocator);
+        }
     }
 
     VKAPI_ATTR VkResult VKAPI_CALL vkBasalt_CreateImage(VkDevice                     device,
@@ -626,7 +666,13 @@ namespace vkBasalt
     {
         std::scoped_lock lock(globalLock);
 
-        LogicalDevice* pLogicalDevice = deviceMap[GetKey(device)].get();
+        const auto deviceIt{deviceMap.find(GetKey(device))};
+        if (deviceIt == std::cend(deviceMap))
+        {
+            return VK_ERROR_UNKNOWN;
+        }
+        auto& [_, logicalDevice] = *deviceIt;
+
         if (isDepthFormat(pCreateInfo->format) && pCreateInfo->samples == VK_SAMPLE_COUNT_1_BIT
             && ((pCreateInfo->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
         {
@@ -637,15 +683,15 @@ namespace vkBasalt
 
             VkImageCreateInfo modifiedCreateInfo = *pCreateInfo;
             modifiedCreateInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-            VkResult result = pLogicalDevice->vkd.CreateImage(device, &modifiedCreateInfo, pAllocator, pImage);
-            pLogicalDevice->depthImages.push_back(*pImage);
-            pLogicalDevice->depthFormats.push_back(pCreateInfo->format);
+            VkResult result = logicalDevice.vkd.CreateImage(device, &modifiedCreateInfo, pAllocator, pImage);
+            logicalDevice.depthImages.push_back(*pImage);
+            logicalDevice.depthFormats.push_back(pCreateInfo->format);
 
             return result;
         }
         else
         {
-            return pLogicalDevice->vkd.CreateImage(device, pCreateInfo, pAllocator, pImage);
+            return logicalDevice.vkd.CreateImage(device, pCreateInfo, pAllocator, pImage);
         }
     }
 
@@ -653,24 +699,29 @@ namespace vkBasalt
     {
         std::scoped_lock lock(globalLock);
 
-        LogicalDevice* pLogicalDevice = deviceMap[GetKey(device)].get();
+        const auto deviceIt{deviceMap.find(GetKey(device))};
+        if (deviceIt == std::cend(deviceMap))
+        {
+            return VK_ERROR_UNKNOWN;
+        }
+        auto& [_, logicalDevice] = *deviceIt;
 
-        VkResult result = pLogicalDevice->vkd.BindImageMemory(device, image, memory, memoryOffset);
+        VkResult result = logicalDevice.vkd.BindImageMemory(device, image, memory, memoryOffset);
         // TODO what if the application creates more than one image before binding memory?
-        if (pLogicalDevice->depthImages.size() && image == pLogicalDevice->depthImages.back())
+        if (logicalDevice.depthImages.size() && image == logicalDevice.depthImages.back())
         {
             Logger::debug("before creating depth image view");
-            VkImageView depthImageView = createImageViews(pLogicalDevice,
-                                                          pLogicalDevice->depthFormats[pLogicalDevice->depthImages.size() - 1],
+            VkImageView depthImageView = createImageViews(std::addressof(logicalDevice),
+                                                          logicalDevice.depthFormats[logicalDevice.depthImages.size() - 1],
                                                           {image},
                                                           VK_IMAGE_VIEW_TYPE_2D,
                                                           VK_IMAGE_ASPECT_DEPTH_BIT)[0];
 
-            VkFormat depthFormat = pLogicalDevice->depthFormats[pLogicalDevice->depthImages.size() - 1];
+            VkFormat depthFormat = logicalDevice.depthFormats[logicalDevice.depthImages.size() - 1];
 
             Logger::debug("created depth image view");
-            pLogicalDevice->depthImageViews.push_back(depthImageView);
-            if (pLogicalDevice->depthImageViews.size() > 1)
+            logicalDevice.depthImageViews.push_back(depthImageView);
+            if (logicalDevice.depthImageViews.size() > 1)
             {
                 return result;
             }
@@ -678,20 +729,24 @@ namespace vkBasalt
             for (auto& it : swapchainMap)
             {
                 LogicalSwapchain* pLogicalSwapchain = it.second.get();
-                if (pLogicalSwapchain->pLogicalDevice == pLogicalDevice)
+                if (pLogicalSwapchain->pLogicalDevice == std::addressof(logicalDevice))
                 {
                     if (pLogicalSwapchain->commandBuffersEffect.size())
                     {
-                        pLogicalDevice->vkd.FreeCommandBuffers(pLogicalDevice->device,
-                                                               pLogicalDevice->commandPool,
-                                                               pLogicalSwapchain->commandBuffersEffect.size(),
-                                                               pLogicalSwapchain->commandBuffersEffect.data());
+                        logicalDevice.vkd.FreeCommandBuffers(logicalDevice.device,
+                                                             logicalDevice.commandPool,
+                                                             pLogicalSwapchain->commandBuffersEffect.size(),
+                                                             pLogicalSwapchain->commandBuffersEffect.data());
                         pLogicalSwapchain->commandBuffersEffect.clear();
-                        pLogicalSwapchain->commandBuffersEffect = allocateCommandBuffer(pLogicalDevice, pLogicalSwapchain->imageCount);
+                        pLogicalSwapchain->commandBuffersEffect = allocateCommandBuffer(std::addressof(logicalDevice), pLogicalSwapchain->imageCount);
                         Logger::debug("allocated CommandBuffers for swapchain " + convertToString(it.first));
 
-                        writeCommandBuffers(
-                            pLogicalDevice, pLogicalSwapchain->effects, image, depthImageView, depthFormat, pLogicalSwapchain->commandBuffersEffect);
+                        writeCommandBuffers(std::addressof(logicalDevice),
+                                            pLogicalSwapchain->effects,
+                                            image,
+                                            depthImageView,
+                                            depthFormat,
+                                            pLogicalSwapchain->commandBuffersEffect);
                         Logger::debug("wrote CommandBuffers");
                     }
                 }
@@ -703,44 +758,55 @@ namespace vkBasalt
     VKAPI_ATTR void VKAPI_CALL vkBasalt_DestroyImage(VkDevice device, VkImage image, const VkAllocationCallbacks* pAllocator)
     {
         if (!image)
+        {
+            Logger::err("null image");
             return;
+        }
 
         std::scoped_lock lock(globalLock);
 
-        LogicalDevice* pLogicalDevice = deviceMap[GetKey(device)].get();
-
-        for (uint32_t i = 0; i < pLogicalDevice->depthImages.size(); i++)
+        const auto deviceIt{deviceMap.find(GetKey(device))};
+        if (deviceIt == std::cend(deviceMap))
         {
-            if (pLogicalDevice->depthImages[i] == image)
-            {
-                pLogicalDevice->depthImages.erase(pLogicalDevice->depthImages.begin() + i);
-                // TODO what if a image gets destroyed before binding memory?
-                if (pLogicalDevice->depthImageViews.size() - 1 >= i)
-                {
-                    pLogicalDevice->vkd.DestroyImageView(pLogicalDevice->device, pLogicalDevice->depthImageViews[i], nullptr);
-                    pLogicalDevice->depthImageViews.erase(pLogicalDevice->depthImageViews.begin() + i);
-                }
-                pLogicalDevice->depthFormats.erase(pLogicalDevice->depthFormats.begin() + i);
+            Logger::err("could not find device in map");
+            return;
+        }
 
-                VkImageView depthImageView = pLogicalDevice->depthImageViews.size() ? pLogicalDevice->depthImageViews[0] : VK_NULL_HANDLE;
-                VkImage     depthImage     = pLogicalDevice->depthImageViews.size() ? pLogicalDevice->depthImages[0] : VK_NULL_HANDLE;
-                VkFormat    depthFormat    = pLogicalDevice->depthImageViews.size() ? pLogicalDevice->depthFormats[0] : VK_FORMAT_UNDEFINED;
+        auto& [_, logicalDevice] = *deviceIt;
+
+        for (uint32_t i = 0; i < logicalDevice.depthImages.size(); i++)
+        {
+            if (logicalDevice.depthImages[i] == image)
+            {
+                logicalDevice.depthImages.erase(logicalDevice.depthImages.begin() + i);
+                // TODO what if a image gets destroyed before binding memory?
+                if (logicalDevice.depthImageViews.size() - 1 >= i)
+                {
+                    logicalDevice.vkd.DestroyImageView(logicalDevice.device, logicalDevice.depthImageViews[i], nullptr);
+                    logicalDevice.depthImageViews.erase(logicalDevice.depthImageViews.begin() + i);
+                }
+                logicalDevice.depthFormats.erase(logicalDevice.depthFormats.begin() + i);
+
+                VkImageView depthImageView = logicalDevice.depthImageViews.size() ? logicalDevice.depthImageViews[0] : VK_NULL_HANDLE;
+                VkImage     depthImage     = logicalDevice.depthImageViews.size() ? logicalDevice.depthImages[0] : VK_NULL_HANDLE;
+                VkFormat    depthFormat    = logicalDevice.depthImageViews.size() ? logicalDevice.depthFormats[0] : VK_FORMAT_UNDEFINED;
                 for (auto& it : swapchainMap)
                 {
                     LogicalSwapchain* pLogicalSwapchain = it.second.get();
-                    if (pLogicalSwapchain->pLogicalDevice == pLogicalDevice)
+                    if (pLogicalSwapchain->pLogicalDevice == std::addressof(logicalDevice))
                     {
                         if (pLogicalSwapchain->commandBuffersEffect.size())
                         {
-                            pLogicalDevice->vkd.FreeCommandBuffers(pLogicalDevice->device,
-                                                                   pLogicalDevice->commandPool,
-                                                                   pLogicalSwapchain->commandBuffersEffect.size(),
-                                                                   pLogicalSwapchain->commandBuffersEffect.data());
+                            logicalDevice.vkd.FreeCommandBuffers(logicalDevice.device,
+                                                                 logicalDevice.commandPool,
+                                                                 pLogicalSwapchain->commandBuffersEffect.size(),
+                                                                 pLogicalSwapchain->commandBuffersEffect.data());
                             pLogicalSwapchain->commandBuffersEffect.clear();
-                            pLogicalSwapchain->commandBuffersEffect = allocateCommandBuffer(pLogicalDevice, pLogicalSwapchain->imageCount);
+                            pLogicalSwapchain->commandBuffersEffect =
+                                allocateCommandBuffer(std::addressof(logicalDevice), pLogicalSwapchain->imageCount);
                             Logger::debug("allocated CommandBuffers for swapchain " + convertToString(it.first));
 
-                            writeCommandBuffers(pLogicalDevice,
+                            writeCommandBuffers(std::addressof(logicalDevice),
                                                 pLogicalSwapchain->effects,
                                                 depthImage,
                                                 depthImageView,
@@ -753,7 +819,7 @@ namespace vkBasalt
             }
         }
 
-        pLogicalDevice->vkd.DestroyImage(pLogicalDevice->device, image, pAllocator);
+        logicalDevice.vkd.DestroyImage(logicalDevice.device, image, pAllocator);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -893,7 +959,7 @@ extern "C"
             std::scoped_lock lock(vkBasalt::globalLock);
             if (const auto deviceIt{vkBasalt::deviceMap.find(vkBasalt::GetKey(device))}; deviceIt != std::cend(vkBasalt::deviceMap))
             {
-                return deviceIt->second->vkd.GetDeviceProcAddr(device, pName);
+                return deviceIt->second.vkd.GetDeviceProcAddr(device, pName);
             }
 
             return nullptr;
