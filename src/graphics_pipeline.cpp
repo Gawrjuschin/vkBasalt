@@ -1,4 +1,5 @@
 #include "graphics_pipeline.hpp"
+#include "vulkan_include.hpp"
 
 namespace vkBasalt
 {
@@ -15,7 +16,7 @@ namespace vkBasalt
 
         VkPipelineLayout pipelineLayout;
         VkResult result = pLogicalDevice->vkd.CreatePipelineLayout(pLogicalDevice->device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
-        ASSERT_VULKAN(result);
+        AssertVulkan(result);
         return pipelineLayout;
     }
 
@@ -174,7 +175,7 @@ namespace vkBasalt
         pipelineCreateInfo.basePipelineIndex   = -1;
 
         result = pLogicalDevice->vkd.CreateGraphicsPipelines(pLogicalDevice->device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline);
-        ASSERT_VULKAN(result);
+        AssertVulkan(result);
 
         return pipeline;
     }

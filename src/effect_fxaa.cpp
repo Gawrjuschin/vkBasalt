@@ -1,16 +1,4 @@
 #include "effect_fxaa.hpp"
-
-#include <cstring>
-
-#include "image_view.hpp"
-#include "descriptor_set.hpp"
-#include "buffer.hpp"
-#include "renderpass.hpp"
-#include "graphics_pipeline.hpp"
-#include "framebuffer.hpp"
-#include "shader.hpp"
-#include "sampler.hpp"
-
 #include "shader_sources.hpp"
 
 namespace vkBasalt

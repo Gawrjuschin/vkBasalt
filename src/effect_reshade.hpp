@@ -1,20 +1,15 @@
 #ifndef EFFECT_RESHADE_HPP_INCLUDED
 #define EFFECT_RESHADE_HPP_INCLUDED
-#include <vector>
-#include <fstream>
-#include <string>
-#include <iostream>
-#include <vector>
-#include <unordered_map>
-#include <memory>
-
-#include "vulkan_include.hpp"
 
 #include "effect.hpp"
 #include "config.hpp"
 #include "reshade_uniforms.hpp"
-
 #include "logical_device.hpp"
+
+#include <string>
+#include <vector>
+#include <unordered_map>
+#include <memory>
 
 #include <effect_parser.hpp>
 #include <effect_codegen.hpp>

@@ -1,4 +1,5 @@
 #include "framebuffer.hpp"
+#include "vulkan_include.hpp"
 
 namespace vkBasalt
 {
@@ -26,7 +27,7 @@ namespace vkBasalt
             framebufferCreateInfo.layers          = 1;
 
             VkResult result = pLogicalDevice->vkd.CreateFramebuffer(pLogicalDevice->device, &framebufferCreateInfo, nullptr, &(framebuffers[i]));
-            ASSERT_VULKAN(result);
+            AssertVulkan(result);
             perFrameImageViews.clear();
         }
         return framebuffers;

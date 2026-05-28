@@ -1,6 +1,9 @@
 #include "fake_swapchain.hpp"
 #include "memory.hpp"
 #include "format.hpp"
+#include "vulkan_include.hpp"
+
+#include <logger.hpp>
 
 namespace vkBasalt
 {
@@ -48,7 +51,7 @@ namespace vkBasalt
         for (uint32_t i = 0; i < count; i++)
         {
             result = pLogicalDevice->vkd.CreateImage(pLogicalDevice->device, &imageCreateInfo, nullptr, &(fakeImages[i]));
-            ASSERT_VULKAN(result);
+            AssertVulkan(result);
         }
 
         // Allocate a bunch of memory for all images at one
@@ -71,12 +74,12 @@ namespace vkBasalt
             findMemoryTypeIndex(pLogicalDevice, memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
         result = pLogicalDevice->vkd.AllocateMemory(pLogicalDevice->device, &memoryAllocateInfo, nullptr, &deviceMemory);
-        ASSERT_VULKAN(result);
+        AssertVulkan(result);
 
         for (uint32_t i = 0; i < count; i++)
         {
             result = pLogicalDevice->vkd.BindImageMemory(pLogicalDevice->device, fakeImages[i], deviceMemory, memoryRequirements.size * i);
-            ASSERT_VULKAN(result);
+            AssertVulkan(result);
         }
         return fakeImages;
     }

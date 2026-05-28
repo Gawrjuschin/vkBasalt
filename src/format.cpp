@@ -1,5 +1,7 @@
 #include "format.hpp"
 
+#include <logger.hpp>
+
 namespace vkBasalt
 {
     VkFormat convertToSRGB(VkFormat format)

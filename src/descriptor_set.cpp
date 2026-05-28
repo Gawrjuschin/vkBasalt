@@ -1,5 +1,7 @@
 #include "descriptor_set.hpp"
 
+#include <vulkan_include.hpp>
+
 namespace vkBasalt
 {
 
@@ -21,7 +23,7 @@ namespace vkBasalt
         descriptorPoolCreateInfo.pPoolSizes    = poolSizes.data();
 
         VkResult result = pLogicalDevice->vkd.CreateDescriptorPool(pLogicalDevice->device, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
-        ASSERT_VULKAN(result);
+        AssertVulkan(result);
         return descriptorPool;
     }
 
@@ -45,7 +47,7 @@ namespace vkBasalt
 
         VkResult result =
             pLogicalDevice->vkd.CreateDescriptorSetLayout(pLogicalDevice->device, &descriptorSetCreateInfo, nullptr, &descriptorSetLayout);
-        ASSERT_VULKAN(result)
+        AssertVulkan(result);
 
         return descriptorSetLayout;
     }
@@ -65,7 +67,7 @@ namespace vkBasalt
         descriptorSetAllocateInfo.pSetLayouts        = &descriptorSetLayout;
 
         VkResult result = pLogicalDevice->vkd.AllocateDescriptorSets(pLogicalDevice->device, &descriptorSetAllocateInfo, &descriptorSet);
-        ASSERT_VULKAN(result);
+        AssertVulkan(result);
 
         VkDescriptorBufferInfo bufferInfo;
         bufferInfo.buffer = buffer;
@@ -116,7 +118,7 @@ namespace vkBasalt
 
         VkResult result =
             pLogicalDevice->vkd.CreateDescriptorSetLayout(pLogicalDevice->device, &descriptorSetCreateInfo, nullptr, &descriptorSetLayout);
-        ASSERT_VULKAN(result)
+        AssertVulkan(result);
         return descriptorSetLayout;
     }
 
@@ -138,7 +140,7 @@ namespace vkBasalt
 
         Logger::debug("before allocating descriptor Sets");
         VkResult result = pLogicalDevice->vkd.AllocateDescriptorSets(pLogicalDevice->device, &descriptorSetAllocateInfo, descriptorSets.data());
-        ASSERT_VULKAN(result);
+        AssertVulkan(result);
 
         VkDescriptorImageInfo imageInfo;
         imageInfo.sampler     = VK_NULL_HANDLE;

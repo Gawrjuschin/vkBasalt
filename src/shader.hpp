@@ -4,7 +4,6 @@
 #include <span>
 #include <cstdint>
 
-#include "vulkan_include.hpp"
 #include "logical_device.hpp"
 
 namespace vkBasalt

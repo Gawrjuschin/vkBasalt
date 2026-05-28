@@ -1,30 +1,28 @@
 #include "effect_reshade.hpp"
+#include "image_view.hpp"
+#include "descriptor_set.hpp"
+#include "buffer.hpp"
+#include "graphics_pipeline.hpp"
+#include "framebuffer.hpp"
+#include "sampler.hpp"
+#include "image.hpp"
+#include "format.hpp"
+#include "util.hpp"
+#include "vulkan_include.hpp"
 
 #include <cstring>
 #include <climits>
 #include <cstdlib>
 #include <cassert>
-
 #include <set>
 #include <variant>
 #include <algorithm>
 
-#include "image_view.hpp"
-#include "descriptor_set.hpp"
-#include "buffer.hpp"
-#include "renderpass.hpp"
-#include "graphics_pipeline.hpp"
-#include "framebuffer.hpp"
-#include "shader.hpp"
-#include "sampler.hpp"
-#include "image.hpp"
-#include "format.hpp"
+#include <stb_image.h>
+#include <stb_image_dds.h>
+#include <stb_image_resize.h>
 
-#include "util.hpp"
-
-#include "stb_image.h"
-#include "stb_image_dds.h"
-#include "stb_image_resize.h"
+#include <logger.hpp>
 
 namespace vkBasalt
 {
@@ -521,7 +519,7 @@ namespace vkBasalt
 
             VkRenderPass renderPass;
             VkResult     result = pLogicalDevice->vkd.CreateRenderPass(pLogicalDevice->device, &renderPassCreateInfo, nullptr, &renderPass);
-            ASSERT_VULKAN(result);
+            AssertVulkan(result);
             renderPasses.push_back(renderPass);
 
             VkRenderPassBeginInfo renderPassBeginInfo;
@@ -761,7 +759,7 @@ namespace vkBasalt
 
             VkPipeline pipeline;
             result = pLogicalDevice->vkd.CreateGraphicsPipelines(pLogicalDevice->device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline);
-            ASSERT_VULKAN(result);
+            AssertVulkan(result);
 
             graphicsPipelines.push_back(pipeline);
 
@@ -777,7 +775,7 @@ namespace vkBasalt
         {
             void*    data;
             VkResult result = pLogicalDevice->vkd.MapMemory(pLogicalDevice->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-            ASSERT_VULKAN(result);
+            AssertVulkan(result);
             for (auto& uniform : uniforms)
             {
                 uniform->update(data);
@@ -1165,7 +1163,7 @@ namespace vkBasalt
         shaderCreateInfo.pCode    = module.spirv.data();
 
         VkResult result = pLogicalDevice->vkd.CreateShaderModule(pLogicalDevice->device, &shaderCreateInfo, nullptr, &shaderModule);
-        ASSERT_VULKAN(result);
+        AssertVulkan(result);
 
         Logger::debug("created reshade shaderModule");
     }

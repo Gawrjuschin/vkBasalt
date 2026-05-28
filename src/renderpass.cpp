@@ -1,4 +1,5 @@
 #include "renderpass.hpp"
+#include "vulkan_include.hpp"
 
 namespace vkBasalt
 {
@@ -54,7 +55,7 @@ namespace vkBasalt
         renderPassCreateInfo.pDependencies   = &subpassDependency;
 
         VkResult result = pLogicalDevice->vkd.CreateRenderPass(pLogicalDevice->device, &renderPassCreateInfo, nullptr, &renderPass);
-        ASSERT_VULKAN(result);
+        AssertVulkan(result);
 
         return renderPass;
     }

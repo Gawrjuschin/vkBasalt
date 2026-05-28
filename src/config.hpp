@@ -1,14 +1,11 @@
 #ifndef CONFIG_HPP_INCLUDED
 #define CONFIG_HPP_INCLUDED
+
 #include <vector>
-#include <fstream>
+#include <istream>
 #include <string>
-#include <iostream>
 #include <vector>
 #include <unordered_map>
-#include <cstdlib>
-
-#include "vulkan_include.hpp"
 
 namespace vkBasalt
 {
@@ -30,7 +27,7 @@ namespace vkBasalt
         std::unordered_map<std::string, std::string> options;
 
         void readConfigLine(std::string line);
-        void readConfigFile(std::ifstream& stream);
+        void readConfigFile(std::istream& stream);
 
         void parseOption(const std::string& option, int32_t& result);
         void parseOption(const std::string& option, float& result);

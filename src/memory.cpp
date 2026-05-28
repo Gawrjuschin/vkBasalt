@@ -1,5 +1,7 @@
 #include "memory.hpp"
 
+#include <logger.hpp>
+
 namespace vkBasalt
 {
     uint32_t findMemoryTypeIndex(LogicalDevice* pLogicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties)

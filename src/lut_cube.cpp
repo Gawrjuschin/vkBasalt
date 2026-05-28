@@ -1,6 +1,6 @@
 #include "lut_cube.hpp"
 
-#include "logger.hpp"
+#include <logger.hpp>
 
 namespace vkBasalt
 {

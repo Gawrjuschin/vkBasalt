@@ -1,13 +1,5 @@
 #ifndef BUFFER_HPP_INCLUDED
 #define BUFFER_HPP_INCLUDED
-#include <vector>
-#include <fstream>
-#include <string>
-#include <iostream>
-#include <vector>
-#include <memory>
-
-#include "vulkan_include.hpp"
 
 #include "logical_device.hpp"
 

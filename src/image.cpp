@@ -2,6 +2,9 @@
 #include "memory.hpp"
 #include "buffer.hpp"
 #include "format.hpp"
+#include "vulkan_include.hpp"
+
+#include <cstring>
 
 namespace vkBasalt
 {
@@ -55,7 +58,7 @@ namespace vkBasalt
         for (uint32_t i = 0; i < count; i++)
         {
             result = pLogicalDevice->vkd.CreateImage(pLogicalDevice->device, &imageCreateInfo, nullptr, &(images[i]));
-            ASSERT_VULKAN(result);
+            AssertVulkan(result);
         }
         // Allocate a bunch of memory for all images at one
         VkMemoryRequirements memoryRequirements;
@@ -73,12 +76,12 @@ namespace vkBasalt
         memoryAllocateInfo.memoryTypeIndex = findMemoryTypeIndex(pLogicalDevice, memoryRequirements.memoryTypeBits, properties);
 
         result = pLogicalDevice->vkd.AllocateMemory(pLogicalDevice->device, &memoryAllocateInfo, nullptr, &imageMemory);
-        ASSERT_VULKAN(result);
+        AssertVulkan(result);
 
         for (uint32_t i = 0; i < count; i++)
         {
             result = pLogicalDevice->vkd.BindImageMemory(pLogicalDevice->device, images[i], imageMemory, memoryRequirements.size * i);
-            ASSERT_VULKAN(result);
+            AssertVulkan(result);
         }
         return images;
     }
@@ -98,7 +101,7 @@ namespace vkBasalt
                      stagingMemory);
         void*    data;
         VkResult result = pLogicalDevice->vkd.MapMemory(pLogicalDevice->device, stagingMemory, 0, size, 0, &data);
-        ASSERT_VULKAN(result);
+        AssertVulkan(result);
         std::memcpy(data, writeData, size);
         pLogicalDevice->vkd.UnmapMemory(pLogicalDevice->device, stagingMemory);
 

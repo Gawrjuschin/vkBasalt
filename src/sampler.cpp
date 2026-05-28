@@ -1,4 +1,5 @@
 #include "sampler.hpp"
+#include "vulkan_include.hpp"
 
 namespace vkBasalt
 {
@@ -27,7 +28,7 @@ namespace vkBasalt
         samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
 
         VkResult result = pLogicalDevice->vkd.CreateSampler(pLogicalDevice->device, &samplerCreateInfo, nullptr, &sampler);
-        ASSERT_VULKAN(result);
+        AssertVulkan(result);
         return sampler;
     }
 
@@ -61,7 +62,7 @@ namespace vkBasalt
         samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
 
         VkResult result = pLogicalDevice->vkd.CreateSampler(pLogicalDevice->device, &samplerCreateInfo, nullptr, &sampler);
-        ASSERT_VULKAN(result);
+        AssertVulkan(result);
         return sampler;
     }
 

@@ -4,7 +4,6 @@
 #include <map>
 #include <vector>
 #include <unordered_map>
-#include <iostream>
 #include <string>
 #include <memory>
 #include <cstring>
@@ -16,16 +15,9 @@
 #include "logical_swapchain.hpp"
 
 #include "image_view.hpp"
-#include "sampler.hpp"
-#include "framebuffer.hpp"
-#include "descriptor_set.hpp"
-#include "shader.hpp"
-#include "graphics_pipeline.hpp"
 #include "command_buffer.hpp"
-#include "buffer.hpp"
 #include "config.hpp"
 #include "fake_swapchain.hpp"
-#include "renderpass.hpp"
 #include "format.hpp"
 #include "logger.hpp"
 
@@ -41,7 +33,9 @@
 
 #include <vkbasalt_export.h>
 
-#define VKBASALT_NAME "VK_LAYER_VKBASALT_post_processing"
+using namespace std::string_view_literals;
+
+constexpr static auto vkBasaltVkLayerName{"VK_LAYER_VKBASALT_post_processing"sv};
 
 namespace vkBasalt
 {
@@ -764,12 +758,19 @@ namespace vkBasalt
     VkResult VKAPI_CALL vkBasalt_EnumerateInstanceLayerProperties(uint32_t* pPropertyCount, VkLayerProperties* pProperties)
     {
         if (pPropertyCount)
+        {
             *pPropertyCount = 1;
+        }
 
         if (pProperties)
         {
-            std::strcpy(pProperties->layerName, VKBASALT_NAME);
-            std::strcpy(pProperties->description, "a post processing layer");
+            static constexpr auto description{"a post processing layer"sv};
+            static_assert(std::size(description) < VK_MAX_DESCRIPTION_SIZE);
+            std::strncpy(pProperties->description, std::data(description), std::size(description));
+
+            static_assert(std::size(vkBasaltVkLayerName) < VK_MAX_EXTENSION_NAME_SIZE);
+            std::strncpy(pProperties->layerName, std::data(vkBasaltVkLayerName), std::size(vkBasaltVkLayerName));
+
             pProperties->implementationVersion = 1;
             pProperties->specVersion           = VK_MAKE_VERSION(1, 2, 0);
         }
@@ -788,7 +789,7 @@ namespace vkBasalt
                                                                       uint32_t*              pPropertyCount,
                                                                       VkExtensionProperties* pProperties)
     {
-        if (pLayerName == NULL || std::strcmp(pLayerName, VKBASALT_NAME))
+        if (pLayerName == NULL || pLayerName == vkBasaltVkLayerName)
         {
             return VK_ERROR_LAYER_NOT_PRESENT;
         }
@@ -807,7 +808,7 @@ namespace vkBasalt
                                                                     VkExtensionProperties* pProperties)
     {
         // pass through any queries that aren't to us
-        if (pLayerName == NULL || std::strcmp(pLayerName, VKBASALT_NAME))
+        if (pLayerName == NULL || pLayerName == vkBasaltVkLayerName)
         {
             if (physicalDevice == VK_NULL_HANDLE)
             {

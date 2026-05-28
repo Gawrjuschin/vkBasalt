@@ -1,8 +1,8 @@
 #pragma once
 
-#include "vulkan_include.hpp"
-
 #include "vkfuncs.hpp"
+
+#include <vulkan/vulkan_core.h>
 
 #define FORVKFUNC(func) PFN_vk##func func = nullptr;
 

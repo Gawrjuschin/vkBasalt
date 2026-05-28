@@ -3,6 +3,8 @@
 #include "format.hpp"
 #include "util.hpp"
 
+#include <vulkan_include.hpp>
+
 namespace vkBasalt
 {
     std::vector<VkCommandBuffer> allocateCommandBuffer(LogicalDevice* pLogicalDevice, uint32_t count)
@@ -17,7 +19,7 @@ namespace vkBasalt
         allocInfo.commandBufferCount = count;
 
         VkResult result = pLogicalDevice->vkd.AllocateCommandBuffers(pLogicalDevice->device, &allocInfo, commandBuffers.data());
-        ASSERT_VULKAN(result);
+        AssertVulkan(result);
         for (uint32_t i = 0; i < count; i++)
         {
             // initialize dispatch tables for commandBuffers since the are dispatchable objects
@@ -49,7 +51,7 @@ namespace vkBasalt
         {
 
             VkResult result = pLogicalDevice->vkd.BeginCommandBuffer(commandBuffers[i], &beginInfo);
-            ASSERT_VULKAN(result);
+            AssertVulkan(result);
 
             VkImageMemoryBarrier memoryBarrier;
             memoryBarrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -106,7 +108,7 @@ namespace vkBasalt
             }
 
             result = pLogicalDevice->vkd.EndCommandBuffer(commandBuffers[i]);
-            ASSERT_VULKAN(result);
+            AssertVulkan(result);
         }
     }
 

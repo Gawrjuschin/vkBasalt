@@ -1,16 +1,9 @@
 #ifndef IMAGE_HPP_INCLUDED
 #define IMAGE_HPP_INCLUDED
-#include <vector>
-#include <fstream>
-#include <string>
-#include <iostream>
-#include <vector>
-#include <cstring>
-#include <memory>
-
-#include "vulkan_include.hpp"
 
 #include "logical_device.hpp"
+
+#include <vector>
 
 namespace vkBasalt
 {

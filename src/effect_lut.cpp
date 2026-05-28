@@ -1,21 +1,13 @@
 #include "effect_lut.hpp"
-
-#include <cstring>
-
+#include "lut_cube.hpp"
 #include "image_view.hpp"
 #include "descriptor_set.hpp"
-#include "buffer.hpp"
-#include "renderpass.hpp"
-#include "graphics_pipeline.hpp"
-#include "framebuffer.hpp"
-#include "shader.hpp"
-#include "sampler.hpp"
 #include "image.hpp"
-#include "lut_cube.hpp"
-
-#include "stb_image.h"
-
 #include "shader_sources.hpp"
+
+#include <stb_image.h>
+
+#include <logger.hpp>
 
 namespace vkBasalt
 {

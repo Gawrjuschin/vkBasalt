@@ -1,5 +1,7 @@
 #include "logical_swapchain.hpp"
 
+#include <logger.hpp>
+
 namespace vkBasalt
 {
     void LogicalSwapchain::destroy()

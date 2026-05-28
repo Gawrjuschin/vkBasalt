@@ -1,17 +1,11 @@
 #ifndef LOGICAL_SWAPCHAIN_HPP_INCLUDED
 #define LOGICAL_SWAPCHAIN_HPP_INCLUDED
-#include <vector>
-#include <fstream>
-#include <string>
-#include <iostream>
-#include <vector>
-#include <memory>
 
 #include "effect.hpp"
-
-#include "vulkan_include.hpp"
-
 #include "logical_device.hpp"
+
+#include <vector>
+#include <memory>
 
 namespace vkBasalt
 {

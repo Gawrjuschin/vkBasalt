@@ -2,12 +2,7 @@
 #define LUT_CUBE_HPP_INCLUDED
 
 #include <vector>
-#include <fstream>
 #include <string>
-#include <iostream>
-#include <vector>
-#include <unordered_map>
-#include <cstdlib>
 
 namespace vkBasalt
 {

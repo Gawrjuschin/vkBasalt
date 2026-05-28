@@ -1,13 +1,9 @@
 #ifndef EFFECT_HPP_INCLUDED
 #define EFFECT_HPP_INCLUDED
-#include <vector>
-#include <fstream>
-#include <string>
-#include <iostream>
-#include <vector>
-#include <unordered_map>
 
-#include "vulkan_include.hpp"
+#include <cstdint>
+
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {

@@ -1,4 +1,5 @@
 #include "shader.hpp"
+#include "vulkan_include.hpp"
 
 namespace vkBasalt
 {
@@ -13,6 +14,6 @@ namespace vkBasalt
         shaderCreateInfo.pCode    = code.data();
 
         VkResult result = pLogicalDevice->vkd.CreateShaderModule(pLogicalDevice->device, &shaderCreateInfo, nullptr, shaderModule);
-        ASSERT_VULKAN(result);
+        AssertVulkan(result);
     }
 } // namespace vkBasalt

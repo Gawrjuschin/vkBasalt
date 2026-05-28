@@ -1,20 +1,12 @@
 #ifndef EFFECT_SIMPLE_HPP_INCLUDED
 #define EFFECT_SIMPLE_HPP_INCLUDED
-#include <vector>
-#include <span>
-#include <fstream>
-#include <string>
-#include <iostream>
-#include <vector>
-#include <unordered_map>
-#include <memory>
-
-#include "vulkan_include.hpp"
 
 #include "effect.hpp"
 #include "config.hpp"
-
 #include "logical_device.hpp"
+
+#include <vector>
+#include <span>
 
 namespace vkBasalt
 {

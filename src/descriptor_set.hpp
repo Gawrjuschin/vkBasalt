@@ -1,13 +1,7 @@
 #ifndef DESCRIPTOR_SET_HPP_INCLUDED
 #define DESCRIPTOR_SET_HPP_INCLUDED
-#include <vector>
-#include <fstream>
-#include <string>
-#include <iostream>
-#include <vector>
-#include <memory>
 
-#include "vulkan_include.hpp"
+#include <vector>
 
 #include "logical_device.hpp"
 

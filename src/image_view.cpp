@@ -1,4 +1,5 @@
 #include "image_view.hpp"
+#include "vulkan_include.hpp"
 
 namespace vkBasalt
 {
@@ -34,7 +35,7 @@ namespace vkBasalt
         {
             imageViewCreateInfo.image = images[i];
             VkResult result           = pLogicalDevice->vkd.CreateImageView(pLogicalDevice->device, &imageViewCreateInfo, nullptr, &(imageViews[i]));
-            ASSERT_VULKAN(result);
+            AssertVulkan(result);
         }
 
         return imageViews;

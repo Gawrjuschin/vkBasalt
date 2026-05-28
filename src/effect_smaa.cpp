@@ -1,10 +1,6 @@
 #include "effect_smaa.hpp"
-
-#include <cstring>
-
 #include "image_view.hpp"
 #include "descriptor_set.hpp"
-#include "buffer.hpp"
 #include "renderpass.hpp"
 #include "graphics_pipeline.hpp"
 #include "framebuffer.hpp"
@@ -12,10 +8,12 @@
 #include "sampler.hpp"
 #include "image.hpp"
 #include "util.hpp"
+#include "shader_sources.hpp"
 
 #include <Textures/AreaTex.h>
 #include <Textures/SearchTex.h>
-#include "shader_sources.hpp"
+
+#include <logger.hpp>
 
 namespace vkBasalt
 {
