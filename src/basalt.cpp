@@ -1,5 +1,6 @@
 #include "vulkan_include.hpp"
 
+#include <iterator>
 #include <mutex>
 #include <map>
 #include <vector>
@@ -32,6 +33,7 @@
 #include "effect_transfer.hpp"
 
 #include <vkbasalt_export.h>
+#include <vulkan/vulkan_core.h>
 
 using namespace std::string_view_literals;
 
@@ -44,18 +46,16 @@ namespace vkBasalt
     Logger Logger::s_instance;
 
     // layer book-keeping information, to store dispatch tables by key
-    std::unordered_map<void*, InstanceDispatch>                           instanceDispatchMap;
-    std::unordered_map<void*, VkInstance>                                 instanceMap;
-    std::unordered_map<void*, uint32_t>                                   instanceVersionMap;
+    struct InstanceData
+    {
+        InstanceDispatch dispatch{};
+        uint32_t         version{};
+    };
+    std::unordered_map<void*, InstanceData>                               instanceMap;
     std::unordered_map<void*, std::shared_ptr<LogicalDevice>>             deviceMap;
     std::unordered_map<VkSwapchainKHR, std::shared_ptr<LogicalSwapchain>> swapchainMap;
 
     std::mutex globalLock;
-#ifdef _GCC_
-    using scoped_lock __attribute__((unused)) = std::lock_guard<std::mutex>;
-#else
-    using scoped_lock = std::lock_guard<std::mutex>;
-#endif
 
     template<typename DispatchableType>
     void* GetKey(DispatchableType inst)
@@ -120,10 +120,9 @@ namespace vkBasalt
 
         // store the table by key
         {
-            scoped_lock l(globalLock);
-            instanceDispatchMap[GetKey(*pInstance)] = dispatchTable;
-            instanceMap[GetKey(*pInstance)]         = *pInstance;
-            instanceVersionMap[GetKey(*pInstance)]  = modifiedCreateInfo.pApplicationInfo->apiVersion;
+            std::scoped_lock lock(globalLock);
+            instanceMap.emplace(GetKey(*pInstance),
+                                InstanceData{.dispatch = std::move(dispatchTable), .version = modifiedCreateInfo.pApplicationInfo->apiVersion});
         }
 
         return ret;
@@ -134,17 +133,14 @@ namespace vkBasalt
         if (!instance)
             return;
 
-        scoped_lock l(globalLock);
+        std::scoped_lock lock(globalLock);
 
         Logger::trace("vkDestroyInstance");
 
-        InstanceDispatch dispatchTable = instanceDispatchMap[GetKey(instance)];
-
-        dispatchTable.DestroyInstance(instance, pAllocator);
-
-        instanceDispatchMap.erase(GetKey(instance));
-        instanceMap.erase(GetKey(instance));
-        instanceVersionMap.erase(GetKey(instance));
+        if (const auto node = instanceMap.extract(GetKey(instance)))
+        {
+            node.mapped().dispatch.DestroyInstance(instance, pAllocator);
+        }
     }
 
     VkResult VKAPI_CALL vkBasalt_CreateDevice(VkPhysicalDevice             physicalDevice,
@@ -152,7 +148,7 @@ namespace vkBasalt
                                               const VkAllocationCallbacks* pAllocator,
                                               VkDevice*                    pDevice)
     {
-        scoped_lock l(globalLock);
+        std::scoped_lock lock(globalLock);
         Logger::trace("vkCreateDevice");
         VkLayerDeviceCreateInfo* layerCreateInfo = (VkLayerDeviceCreateInfo*) pCreateInfo->pNext;
 
@@ -179,15 +175,23 @@ namespace vkBasalt
         // check and activate extentions
         uint32_t extensionCount = 0;
 
-        instanceDispatchMap[GetKey(physicalDevice)].EnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
+        const auto instanceIt{instanceMap.find(GetKey(physicalDevice))};
+        if (instanceIt == std::cend(instanceMap))
+        {
+            // No Instance Dispatch for Physical Device
+            return VK_ERROR_INITIALIZATION_FAILED;
+        }
+
+        const auto& [instanceKey, instanceData] = *instanceIt;
+
+        instanceData.dispatch.EnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
         std::vector<VkExtensionProperties> extensionProperties(extensionCount);
-        instanceDispatchMap[GetKey(physicalDevice)].EnumerateDeviceExtensionProperties(
-            physicalDevice, nullptr, &extensionCount, extensionProperties.data());
+        instanceData.dispatch.EnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, std::data(extensionProperties));
 
         bool supportsMutableFormat = false;
         for (VkExtensionProperties properties : extensionProperties)
         {
-            if (properties.extensionName == std::string("VK_KHR_swapchain_mutable_format"))
+            if (properties.extensionName == "VK_KHR_swapchain_mutable_format"sv)
             {
                 Logger::debug("device supports VK_KHR_swapchain_mutable_format");
                 supportsMutableFormat = true;
@@ -196,7 +200,7 @@ namespace vkBasalt
         }
 
         VkPhysicalDeviceProperties deviceProps;
-        instanceDispatchMap[GetKey(physicalDevice)].GetPhysicalDeviceProperties(physicalDevice, &deviceProps);
+        instanceData.dispatch.GetPhysicalDeviceProperties(physicalDevice, &deviceProps);
 
         VkDeviceCreateInfo       modifiedCreateInfo = *pCreateInfo;
         std::vector<const char*> enabledExtensionNames;
@@ -211,7 +215,7 @@ namespace vkBasalt
             Logger::debug("activating mutable_format");
             addUniqueCString(enabledExtensionNames, "VK_KHR_swapchain_mutable_format");
         }
-        if (deviceProps.apiVersion < VK_API_VERSION_1_2 || instanceVersionMap[GetKey(physicalDevice)] < VK_API_VERSION_1_2)
+        if (deviceProps.apiVersion < VK_API_VERSION_1_2 || instanceData.version < VK_API_VERSION_1_2)
         {
             addUniqueCString(enabledExtensionNames, "VK_KHR_image_format_list");
         }
@@ -233,10 +237,10 @@ namespace vkBasalt
             return ret;
 
         std::shared_ptr<LogicalDevice> pLogicalDevice(new LogicalDevice());
-        pLogicalDevice->vki                   = instanceDispatchMap[GetKey(physicalDevice)];
+        pLogicalDevice->vki                   = instanceData.dispatch;
         pLogicalDevice->device                = *pDevice;
         pLogicalDevice->physicalDevice        = physicalDevice;
-        pLogicalDevice->instance              = instanceMap[GetKey(physicalDevice)];
+        pLogicalDevice->instance              = static_cast<VkInstance>(instanceKey);
         pLogicalDevice->queue                 = VK_NULL_HANDLE;
         pLogicalDevice->queueFamilyIndex      = 0;
         pLogicalDevice->commandPool           = VK_NULL_HANDLE;
@@ -287,7 +291,7 @@ namespace vkBasalt
         if (!device)
             return;
 
-        scoped_lock l(globalLock);
+        std::scoped_lock lock(globalLock);
 
         Logger::trace("vkDestroyDevice");
 
@@ -308,7 +312,7 @@ namespace vkBasalt
                                                                const VkAllocationCallbacks*    pAllocator,
                                                                VkSwapchainKHR*                 pSwapchain)
     {
-        scoped_lock l(globalLock);
+        std::scoped_lock lock(globalLock);
 
         Logger::trace("vkCreateSwapchainKHR");
 
@@ -362,7 +366,7 @@ namespace vkBasalt
                                                                   uint32_t*      pCount,
                                                                   VkImage*       pSwapchainImages)
     {
-        scoped_lock l(globalLock);
+        std::scoped_lock lock(globalLock);
         Logger::trace("vkGetSwapchainImagesKHR " + std::to_string(*pCount));
 
         LogicalDevice* pLogicalDevice = deviceMap[GetKey(device)].get();
@@ -532,7 +536,7 @@ namespace vkBasalt
 
     VKAPI_ATTR VkResult VKAPI_CALL vkBasalt_QueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
     {
-        scoped_lock l(globalLock);
+        std::scoped_lock lock(globalLock);
 
         static uint32_t keySymbol = convertToKeySym(pConfig->getOption<std::string>("toggleKey", "Home"));
 
@@ -604,7 +608,7 @@ namespace vkBasalt
         if (!swapchain)
             return;
 
-        scoped_lock l(globalLock);
+        std::scoped_lock lock(globalLock);
         // we need to delete the infos of the oldswapchain
 
         Logger::trace("vkDestroySwapchainKHR " + convertToString(swapchain));
@@ -620,7 +624,7 @@ namespace vkBasalt
                                                         const VkAllocationCallbacks* pAllocator,
                                                         VkImage*                     pImage)
     {
-        scoped_lock l(globalLock);
+        std::scoped_lock lock(globalLock);
 
         LogicalDevice* pLogicalDevice = deviceMap[GetKey(device)].get();
         if (isDepthFormat(pCreateInfo->format) && pCreateInfo->samples == VK_SAMPLE_COUNT_1_BIT
@@ -647,7 +651,7 @@ namespace vkBasalt
 
     VKAPI_ATTR VkResult VKAPI_CALL vkBasalt_BindImageMemory(VkDevice device, VkImage image, VkDeviceMemory memory, VkDeviceSize memoryOffset)
     {
-        scoped_lock l(globalLock);
+        std::scoped_lock lock(globalLock);
 
         LogicalDevice* pLogicalDevice = deviceMap[GetKey(device)].get();
 
@@ -701,7 +705,7 @@ namespace vkBasalt
         if (!image)
             return;
 
-        scoped_lock l(globalLock);
+        std::scoped_lock lock(globalLock);
 
         LogicalDevice* pLogicalDevice = deviceMap[GetKey(device)].get();
 
@@ -815,10 +819,13 @@ namespace vkBasalt
                 return VK_SUCCESS;
             }
 
-            scoped_lock l(globalLock);
-            // TODO: prevent nullptr access
-            return instanceDispatchMap[GetKey(physicalDevice)].EnumerateDeviceExtensionProperties(
-                physicalDevice, pLayerName, pPropertyCount, pProperties);
+            std::scoped_lock lock(globalLock);
+            if (const auto instanceIt{instanceMap.find(GetKey(physicalDevice))}; instanceIt != std::cend(instanceMap))
+            {
+                return instanceIt->second.dispatch.EnumerateDeviceExtensionProperties(physicalDevice, pLayerName, pPropertyCount, pProperties);
+            }
+
+            return VK_ERROR_UNKNOWN;
         }
 
         // don't expose any extensions
@@ -883,7 +890,7 @@ extern "C"
         INTERCEPT_CALLS
 
         {
-            vkBasalt::scoped_lock l(vkBasalt::globalLock);
+            std::scoped_lock lock(vkBasalt::globalLock);
             if (const auto deviceIt{vkBasalt::deviceMap.find(vkBasalt::GetKey(device))}; deviceIt != std::cend(vkBasalt::deviceMap))
             {
                 return deviceIt->second->vkd.GetDeviceProcAddr(device, pName);
@@ -903,12 +910,10 @@ extern "C"
         INTERCEPT_CALLS
 
         {
-            vkBasalt::scoped_lock l(vkBasalt::globalLock);
-            // TODO: prevent nullptr access
-            if (const auto instanceIt{vkBasalt::instanceDispatchMap.find(vkBasalt::GetKey(instance))};
-                instanceIt != std::cend(vkBasalt::instanceDispatchMap))
+            std::scoped_lock lock(vkBasalt::globalLock);
+            if (const auto instanceIt{vkBasalt::instanceMap.find(vkBasalt::GetKey(instance))}; instanceIt != std::cend(vkBasalt::instanceMap))
             {
-                return instanceIt->second.GetInstanceProcAddr(instance, pName);
+                return instanceIt->second.dispatch.GetInstanceProcAddr(instance, pName);
             }
 
             return nullptr;
