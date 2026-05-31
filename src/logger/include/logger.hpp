@@ -1,18 +1,16 @@
 #ifndef LOGGER_HPP_INCLUDED
 #define LOGGER_HPP_INCLUDED
 
-#include <array>
-#include <fstream>
+#include <cstdint>
 #include <iostream>
 #include <mutex>
-#include <string>
 #include <memory>
-#include <functional>
+#include <string>
 
 namespace vkBasalt
 {
 
-    enum class LogLevel : uint32_t
+    enum class LogLevel : uint8_t
     {
         Trace = 0,
         Debug = 1,
@@ -24,9 +22,13 @@ namespace vkBasalt
 
     class Logger
     {
+        Logger() noexcept;
 
     public:
-        Logger();
+        Logger(const Logger&)            = delete;
+        Logger& operator=(const Logger&) = delete;
+        Logger(Logger&&)                 = delete;
+        Logger& operator=(Logger&&)      = delete;
         ~Logger();
 
         static void trace(const std::string& message);
@@ -48,13 +50,9 @@ namespace vkBasalt
 
         std::mutex m_mutex;
 
-        std::unique_ptr<std::ostream, std::function<void(std::ostream*)>> m_outStream;
+        std::unique_ptr<std::ostream, void (*)(std::ostream*)> m_outStream{nullptr, nullptr};
 
         void emitMsg(LogLevel level, const std::string& message);
-
-        static LogLevel getMinLogLevel();
-
-        static std::string getFileName();
     };
 
 } // namespace vkBasalt

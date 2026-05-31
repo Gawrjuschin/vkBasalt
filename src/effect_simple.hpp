@@ -14,8 +14,8 @@ namespace vkBasalt
     {
     public:
         SimpleEffect();
-        void virtual applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
-        virtual ~SimpleEffect();
+        void applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
+        ~SimpleEffect() override;
 
     protected:
         LogicalDevice*               pLogicalDevice;

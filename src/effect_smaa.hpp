@@ -9,7 +9,7 @@
 
 namespace vkBasalt
 {
-    class SmaaEffect : public Effect
+    class SmaaEffect final : public Effect
     {
     public:
         SmaaEffect(LogicalDevice*       pLogicalDevice,
@@ -19,7 +19,7 @@ namespace vkBasalt
                    std::vector<VkImage> outputImages,
                    Config*              pConfig);
         void applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
-        ~SmaaEffect();
+        ~SmaaEffect() override;
 
     private:
         LogicalDevice*               pLogicalDevice;

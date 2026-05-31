@@ -8,7 +8,7 @@
 
 namespace vkBasalt
 {
-    class DebandEffect : public SimpleEffect
+    class DebandEffect final : public SimpleEffect
     {
     public:
         DebandEffect(LogicalDevice*       pLogicalDevice,
@@ -17,7 +17,7 @@ namespace vkBasalt
                      std::vector<VkImage> inputImages,
                      std::vector<VkImage> outputImages,
                      Config*              pConfig);
-        ~DebandEffect();
+        ~DebandEffect() override;
     };
 } // namespace vkBasalt
 

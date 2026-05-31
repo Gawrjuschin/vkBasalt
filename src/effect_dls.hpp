@@ -7,7 +7,7 @@
 
 namespace vkBasalt
 {
-    class DlsEffect : public SimpleEffect
+    class DlsEffect final : public SimpleEffect
     {
     public:
         DlsEffect(LogicalDevice*       pLogicalDevice,
@@ -16,6 +16,6 @@ namespace vkBasalt
                   std::vector<VkImage> inputImages,
                   std::vector<VkImage> outputImages,
                   Config*              pConfig);
-        ~DlsEffect();
+        ~DlsEffect() override;
     };
 } // namespace vkBasalt

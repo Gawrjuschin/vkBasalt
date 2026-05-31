@@ -8,7 +8,7 @@
 
 namespace vkBasalt
 {
-    class CasEffect : public SimpleEffect
+    class CasEffect final : public SimpleEffect
     {
     public:
         CasEffect(LogicalDevice*       pLogicalDevice,
@@ -17,7 +17,7 @@ namespace vkBasalt
                   std::vector<VkImage> inputImages,
                   std::vector<VkImage> outputImages,
                   Config*              pConfig);
-        ~CasEffect();
+        ~CasEffect() override;
     };
 } // namespace vkBasalt
 

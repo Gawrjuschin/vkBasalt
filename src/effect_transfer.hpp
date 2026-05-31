@@ -9,7 +9,7 @@
 
 namespace vkBasalt
 {
-    class TransferEffect : public Effect
+    class TransferEffect final : public Effect
     {
     public:
         TransferEffect(LogicalDevice*       pLogicalDevice,
@@ -18,8 +18,8 @@ namespace vkBasalt
                        std::vector<VkImage> inputImages,
                        std::vector<VkImage> outputImages,
                        Config*              pConfig);
-        void virtual applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
-        virtual ~TransferEffect();
+        void applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
+        ~TransferEffect() override;
 
     private:
         LogicalDevice*       pLogicalDevice;

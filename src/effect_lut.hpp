@@ -8,7 +8,7 @@
 
 namespace vkBasalt
 {
-    class LutEffect : public SimpleEffect
+    class LutEffect final : public SimpleEffect
     {
     public:
         LutEffect(LogicalDevice*       pLogicalDevice,
@@ -17,7 +17,7 @@ namespace vkBasalt
                   std::vector<VkImage> inputImages,
                   std::vector<VkImage> outputImages,
                   Config*              pConfig);
-        ~LutEffect();
+        ~LutEffect() override;
         void applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
 
     private:

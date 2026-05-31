@@ -17,7 +17,7 @@
 
 namespace vkBasalt
 {
-    class ReshadeEffect : public Effect
+    class ReshadeEffect final : public Effect
     {
     public:
         ReshadeEffect(LogicalDevice*       pLogicalDevice,
@@ -27,10 +27,10 @@ namespace vkBasalt
                       std::vector<VkImage> outputImages,
                       Config*              pConfig,
                       std::string          effectName);
-        void virtual applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
-        void virtual updateEffect() override;
-        void virtual useDepthImage(VkImageView depthImageView) override;
-        virtual ~ReshadeEffect();
+        void applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
+        void updateEffect() override;
+        void useDepthImage(VkImageView depthImageView) override;
+        ~ReshadeEffect() override;
 
     private:
         LogicalDevice*           pLogicalDevice;

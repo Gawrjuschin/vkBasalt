@@ -1,5 +1,7 @@
 #include "lut_cube.hpp"
 
+#include <fstream>
+
 #include <logger.hpp>
 
 namespace vkBasalt

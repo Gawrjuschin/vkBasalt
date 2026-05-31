@@ -8,7 +8,7 @@
 
 namespace vkBasalt
 {
-    class FxaaEffect : public SimpleEffect
+    class FxaaEffect final : public SimpleEffect
     {
     public:
         FxaaEffect(LogicalDevice*       pLogicalDevice,
@@ -17,7 +17,7 @@ namespace vkBasalt
                    std::vector<VkImage> inputImages,
                    std::vector<VkImage> outputImages,
                    Config*              pConfig);
-        ~FxaaEffect();
+        ~FxaaEffect() override;
     };
 } // namespace vkBasalt
 

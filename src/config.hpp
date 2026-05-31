@@ -1,11 +1,11 @@
 #ifndef CONFIG_HPP_INCLUDED
 #define CONFIG_HPP_INCLUDED
 
-#include <vector>
+#include <cstdint>
 #include <istream>
 #include <string>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 namespace vkBasalt
 {
@@ -13,7 +13,14 @@ namespace vkBasalt
     {
     public:
         Config();
-        Config(const Config& other);
+
+        Config(const Config& other)            = default;
+        Config& operator=(const Config& other) = default;
+
+        Config(Config&&)            = default;
+        Config& operator=(Config&&) = default;
+
+        ~Config() = default;
 
         template<typename T>
         T getOption(const std::string& option, const T& defaultValue = {})
