@@ -3,6 +3,8 @@
 #include <iterator>
 #include <mutex>
 #include <map>
+#include <optional>
+#include <string_view>
 #include <vector>
 #include <unordered_map>
 #include <string>
@@ -22,7 +24,6 @@
 #include "format.hpp"
 #include "logger.hpp"
 
-#include "effect.hpp"
 #include "effect_fxaa.hpp"
 #include "effect_cas.hpp"
 #include "effect_dls.hpp"
@@ -41,21 +42,7 @@ constexpr static auto vkBasaltVkLayerName{"VK_LAYER_VKBASALT_post_processing"sv}
 
 namespace vkBasalt
 {
-    std::shared_ptr<Config> pConfig = nullptr;
-
     Logger Logger::s_instance;
-
-    // layer book-keeping information, to store dispatch tables by key
-    struct InstanceData
-    {
-        InstanceDispatch dispatch{};
-        uint32_t         version{};
-    };
-    std::unordered_map<void*, InstanceData>                               instanceMap;
-    std::unordered_map<void*, LogicalDevice>                              deviceMap;
-    std::unordered_map<VkSwapchainKHR, std::shared_ptr<LogicalSwapchain>> swapchainMap;
-
-    std::mutex globalLock;
 
     template<typename DispatchableType>
     void* GetKey(DispatchableType inst)
@@ -63,9 +50,100 @@ namespace vkBasalt
         return *(void**) inst;
     }
 
-    VkResult VKAPI_CALL vkBasalt_CreateInstance(const VkInstanceCreateInfo*  pCreateInfo,
+    // TODO: better name for this singleton
+    class GlobalState
+    {
+        struct InstanceData
+        {
+            InstanceDispatch dispatch{};
+            uint32_t         version{};
+        };
+        std::unordered_map<void*, InstanceData>                               instanceMap;
+        std::unordered_map<void*, LogicalDevice>                              deviceMap;
+        std::unordered_map<VkSwapchainKHR, std::shared_ptr<LogicalSwapchain>> swapchainMap;
+
+        std::mutex globalLock; // TODO: try std::shared_mutex
+        Config     config;
+
+        GlobalState() = default;
+
+        static GlobalState& Get()
+        {
+            static GlobalState state{};
+            return state;
+        }
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // intercepted calls
+        static VkResult VKAPI_CALL            CreateInstance(const VkInstanceCreateInfo*  pCreateInfo,
+                                                             const VkAllocationCallbacks* pAllocator,
+                                                             VkInstance*                  pInstance);
+
+        static void VKAPI_CALL DestroyInstance(VkInstance instance, const VkAllocationCallbacks* pAllocator);
+
+        static VkResult VKAPI_CALL CreateDevice(VkPhysicalDevice             physicalDevice,
+                                                const VkDeviceCreateInfo*    pCreateInfo,
                                                 const VkAllocationCallbacks* pAllocator,
-                                                VkInstance*                  pInstance)
+                                                VkDevice*                    pDevice);
+
+        static void VKAPI_CALL DestroyDevice(VkDevice device, const VkAllocationCallbacks* pAllocator);
+
+        static VKAPI_ATTR VkResult VKAPI_CALL CreateSwapchainKHR(VkDevice                        device,
+                                                                 const VkSwapchainCreateInfoKHR* pCreateInfo,
+                                                                 const VkAllocationCallbacks*    pAllocator,
+                                                                 VkSwapchainKHR*                 pSwapchain);
+
+        static VKAPI_ATTR VkResult VKAPI_CALL GetSwapchainImagesKHR(VkDevice       device,
+                                                                    VkSwapchainKHR swapchain,
+                                                                    uint32_t*      pCount,
+                                                                    VkImage*       pSwapchainImages);
+
+        static VKAPI_ATTR VkResult VKAPI_CALL QueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo);
+
+        static VKAPI_ATTR void VKAPI_CALL DestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapchain, const VkAllocationCallbacks* pAllocator);
+
+        static VKAPI_ATTR VkResult VKAPI_CALL CreateImage(VkDevice                     device,
+                                                          const VkImageCreateInfo*     pCreateInfo,
+                                                          const VkAllocationCallbacks* pAllocator,
+                                                          VkImage*                     pImage);
+
+        static VKAPI_ATTR VkResult VKAPI_CALL BindImageMemory(VkDevice device, VkImage image, VkDeviceMemory memory, VkDeviceSize memoryOffset);
+
+        static VKAPI_ATTR void VKAPI_CALL DestroyImage(VkDevice device, VkImage image, const VkAllocationCallbacks* pAllocator);
+
+        // Enumeration function
+        static VkResult VKAPI_CALL EnumerateInstanceLayerProperties(uint32_t* pPropertyCount, VkLayerProperties* pProperties);
+
+        static VkResult VKAPI_CALL EnumerateDeviceLayerProperties(VkPhysicalDevice   physicalDevice,
+                                                                  uint32_t*          pPropertyCount,
+                                                                  VkLayerProperties* pProperties);
+
+        static VkResult VKAPI_CALL EnumerateInstanceExtensionProperties(const char*            pLayerName,
+                                                                        uint32_t*              pPropertyCount,
+                                                                        VkExtensionProperties* pProperties);
+
+        static VkResult VKAPI_CALL EnumerateDeviceExtensionProperties(VkPhysicalDevice       physicalDevice,
+                                                                      const char*            pLayerName,
+                                                                      uint32_t*              pPropertyCount,
+                                                                      VkExtensionProperties* pProperties);
+
+        static std::optional<PFN_vkVoidFunction> InterceptedCalls(std::string_view procName);
+
+    public:
+        GlobalState(const GlobalState&) = delete;
+        GlobalState& operator=(const GlobalState&) = delete;
+        GlobalState(GlobalState&&)      = delete;
+        GlobalState& operator=(GlobalState&&)      = delete;
+        ~GlobalState()                  = default;
+
+        // The only public methods that must be called in corresponding functions in export "C" block
+        static PFN_vkVoidFunction VKAPI_CALL GetDeviceProcAddr(VkDevice device, const char* pName);
+        static PFN_vkVoidFunction VKAPI_CALL GetInstanceProcAddr(VkInstance instance, const char* pName);
+    };
+
+    VkResult VKAPI_CALL GlobalState::CreateInstance(const VkInstanceCreateInfo*  pCreateInfo,
+                                                    const VkAllocationCallbacks* pAllocator,
+                                                    VkInstance*                  pInstance)
     {
         VkLayerInstanceCreateInfo* layerCreateInfo = (VkLayerInstanceCreateInfo*) pCreateInfo->pNext;
 
@@ -120,15 +198,16 @@ namespace vkBasalt
 
         // store the table by key
         {
-            std::scoped_lock lock(globalLock);
-            instanceMap.emplace(GetKey(*pInstance),
-                                InstanceData{.dispatch = std::move(dispatchTable), .version = modifiedCreateInfo.pApplicationInfo->apiVersion});
+            auto&            state = GlobalState::Get();
+            const std::scoped_lock lock{state.globalLock};
+            state.instanceMap.emplace(GetKey(*pInstance),
+                                      InstanceData{.dispatch = std::move(dispatchTable), .version = modifiedCreateInfo.pApplicationInfo->apiVersion});
         }
 
         return ret;
     }
 
-    void VKAPI_CALL vkBasalt_DestroyInstance(VkInstance instance, const VkAllocationCallbacks* pAllocator)
+    void VKAPI_CALL GlobalState::DestroyInstance(VkInstance instance, const VkAllocationCallbacks* pAllocator)
     {
         if (!instance)
         {
@@ -136,22 +215,24 @@ namespace vkBasalt
             return;
         }
 
-        std::scoped_lock lock(globalLock);
+        auto&            state = GlobalState::Get();
+        const std::scoped_lock lock{state.globalLock};
 
         Logger::trace("vkDestroyInstance");
 
-        if (const auto node = instanceMap.extract(GetKey(instance)))
+        if (const auto node = state.instanceMap.extract(GetKey(instance)))
         {
             node.mapped().dispatch.DestroyInstance(instance, pAllocator);
         }
     }
 
-    VkResult VKAPI_CALL vkBasalt_CreateDevice(VkPhysicalDevice             physicalDevice,
-                                              const VkDeviceCreateInfo*    pCreateInfo,
-                                              const VkAllocationCallbacks* pAllocator,
-                                              VkDevice*                    pDevice)
+    VkResult VKAPI_CALL GlobalState::CreateDevice(VkPhysicalDevice             physicalDevice,
+                                                  const VkDeviceCreateInfo*    pCreateInfo,
+                                                  const VkAllocationCallbacks* pAllocator,
+                                                  VkDevice*                    pDevice)
     {
-        std::scoped_lock lock(globalLock);
+        auto&            state = GlobalState::Get();
+        const std::scoped_lock lock{state.globalLock};
         Logger::trace("vkCreateDevice");
         VkLayerDeviceCreateInfo* layerCreateInfo = (VkLayerDeviceCreateInfo*) pCreateInfo->pNext;
 
@@ -178,8 +259,8 @@ namespace vkBasalt
         // check and activate extentions
         uint32_t extensionCount = 0;
 
-        const auto instanceIt{instanceMap.find(GetKey(physicalDevice))};
-        if (instanceIt == std::cend(instanceMap))
+        const auto instanceIt{state.instanceMap.find(GetKey(physicalDevice))};
+        if (instanceIt == std::cend(state.instanceMap))
         {
             // No Instance Dispatch for Physical Device
             return VK_ERROR_INITIALIZATION_FAILED;
@@ -236,8 +317,10 @@ namespace vkBasalt
 
         VkResult ret = createFunc(physicalDevice, &modifiedCreateInfo, pAllocator, pDevice);
 
-        if (ret != VK_SUCCESS)
+        if (ret != VkResult::VK_SUCCESS)
+        {
             return ret;
+        }
 
         LogicalDevice logicalDevice{
             .vki                   = instanceData.dispatch,
@@ -287,12 +370,12 @@ namespace vkBasalt
             Logger::err("Did not find a graphics queue!");
         }
 
-        deviceMap.emplace(GetKey(*pDevice), std::move(logicalDevice));
+        state.deviceMap.emplace(GetKey(*pDevice), std::move(logicalDevice));
 
         return VK_SUCCESS;
     }
 
-    void VKAPI_CALL vkBasalt_DestroyDevice(VkDevice device, const VkAllocationCallbacks* pAllocator)
+    void VKAPI_CALL GlobalState::DestroyDevice(VkDevice device, const VkAllocationCallbacks* pAllocator)
     {
         if (!device)
         {
@@ -300,12 +383,14 @@ namespace vkBasalt
             return;
         }
 
-        std::scoped_lock lock(globalLock);
+        auto&            state = GlobalState::Get();
+        const std::scoped_lock lock{state.globalLock};
 
         Logger::trace("vkDestroyDevice");
 
-        const auto deviceIt{deviceMap.find(GetKey(device))};
-        if (deviceIt == std::cend(deviceMap))
+        // TODO: extract node instead
+        const auto deviceIt{state.deviceMap.find(GetKey(device))};
+        if (deviceIt == std::cend(state.deviceMap))
         {
             Logger::err("could not find device in map");
             return;
@@ -320,20 +405,21 @@ namespace vkBasalt
 
         logicalDevice.vkd.DestroyDevice(device, pAllocator);
 
-        deviceMap.erase(GetKey(device));
+        state.deviceMap.erase(GetKey(device));
     }
 
-    VKAPI_ATTR VkResult VKAPI_CALL vkBasalt_CreateSwapchainKHR(VkDevice                        device,
-                                                               const VkSwapchainCreateInfoKHR* pCreateInfo,
-                                                               const VkAllocationCallbacks*    pAllocator,
-                                                               VkSwapchainKHR*                 pSwapchain)
+    VKAPI_ATTR VkResult VKAPI_CALL GlobalState::CreateSwapchainKHR(VkDevice                        device,
+                                                                   const VkSwapchainCreateInfoKHR* pCreateInfo,
+                                                                   const VkAllocationCallbacks*    pAllocator,
+                                                                   VkSwapchainKHR*                 pSwapchain)
     {
-        std::scoped_lock lock(globalLock);
+        auto&            state = GlobalState::Get();
+        const std::scoped_lock lock{state.globalLock};
 
         Logger::trace("vkCreateSwapchainKHR");
 
-        const auto deviceIt{deviceMap.find(GetKey(device))};
-        if (deviceIt == std::cend(deviceMap))
+        const auto deviceIt{state.deviceMap.find(GetKey(device))};
+        if (deviceIt == std::cend(state.deviceMap))
         {
             return VK_ERROR_UNKNOWN;
         }
@@ -368,30 +454,35 @@ namespace vkBasalt
         modifiedCreateInfo.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
         Logger::debug("format " + std::to_string(modifiedCreateInfo.imageFormat));
-        std::shared_ptr<LogicalSwapchain> pLogicalSwapchain(new LogicalSwapchain());
-        pLogicalSwapchain->pLogicalDevice      = std::addressof(logicalDevice);
-        pLogicalSwapchain->swapchainCreateInfo = *pCreateInfo;
-        pLogicalSwapchain->imageExtent         = modifiedCreateInfo.imageExtent;
-        pLogicalSwapchain->format              = modifiedCreateInfo.imageFormat;
-        pLogicalSwapchain->imageCount          = 0;
+
+        // TODO: handle make success
+        auto pLogicalSwapchain = std::make_shared<LogicalSwapchain>(LogicalSwapchain{
+            .pLogicalDevice      = std::addressof(logicalDevice),
+            .swapchainCreateInfo = *pCreateInfo,
+            .imageExtent         = modifiedCreateInfo.imageExtent,
+            .format              = modifiedCreateInfo.imageFormat,
+            .imageCount          = 0,
+        });
 
         VkResult result = logicalDevice.vkd.CreateSwapchainKHR(device, &modifiedCreateInfo, pAllocator, pSwapchain);
 
-        swapchainMap[*pSwapchain] = pLogicalSwapchain;
+        // TODO: check success on emplace
+        state.swapchainMap.emplace(*pSwapchain, std::move(pLogicalSwapchain));
 
         return result;
     }
 
-    VKAPI_ATTR VkResult VKAPI_CALL vkBasalt_GetSwapchainImagesKHR(VkDevice       device,
-                                                                  VkSwapchainKHR swapchain,
-                                                                  uint32_t*      pCount,
-                                                                  VkImage*       pSwapchainImages)
+    VKAPI_ATTR VkResult VKAPI_CALL GlobalState::GetSwapchainImagesKHR(VkDevice       device,
+                                                                      VkSwapchainKHR swapchain,
+                                                                      uint32_t*      pCount,
+                                                                      VkImage*       pSwapchainImages)
     {
-        std::scoped_lock lock(globalLock);
+        auto&            state = GlobalState::Get();
+        const std::scoped_lock lock{state.globalLock};
         Logger::trace("vkGetSwapchainImagesKHR " + std::to_string(*pCount));
 
-        const auto deviceIt{deviceMap.find(GetKey(device))};
-        if (deviceIt == std::cend(deviceMap))
+        const auto deviceIt{state.deviceMap.find(GetKey(device))};
+        if (deviceIt == std::cend(state.deviceMap))
         {
             return VK_ERROR_UNKNOWN;
         }
@@ -402,7 +493,7 @@ namespace vkBasalt
             return logicalDevice.vkd.GetSwapchainImagesKHR(device, swapchain, pCount, pSwapchainImages);
         }
 
-        LogicalSwapchain* pLogicalSwapchain = swapchainMap[swapchain].get();
+        LogicalSwapchain* pLogicalSwapchain = state.swapchainMap[swapchain].get();
 
         // If the images got already requested once, return them again instead of creating new images
         if (pLogicalSwapchain->fakeImages.size())
@@ -416,7 +507,7 @@ namespace vkBasalt
         pLogicalSwapchain->images.resize(pLogicalSwapchain->imageCount);
         logicalDevice.vkd.GetSwapchainImagesKHR(device, swapchain, &pLogicalSwapchain->imageCount, pLogicalSwapchain->images.data());
 
-        std::vector<std::string> effectStrings = pConfig->getOption<std::vector<std::string>>("effects", {"cas"});
+        std::vector<std::string> effectStrings = state.config.getOption<std::vector<std::string>>("effects", {"cas"});
 
         // create 1 more set of images when we can't use the swapchain it self
         uint32_t fakeImageCount = pLogicalSwapchain->imageCount * (effectStrings.size() + !logicalDevice.supportsMutableFormat);
@@ -450,64 +541,88 @@ namespace vkBasalt
                 Logger::debug("not using swapchain images as second images");
             }
             Logger::debug(std::to_string(secondImages.size()) + " images in secondImages");
-            if (effectStrings[i] == std::string("fxaa"))
+            if (effectStrings[i] == "fxaa")
             {
-                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(new FxaaEffect(
-                    std::addressof(logicalDevice), srgbFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
+                pLogicalSwapchain->effects.emplace_back(std::make_shared<FxaaEffect>(std::addressof(logicalDevice),
+                                                                                     srgbFormat,
+                                                                                     pLogicalSwapchain->imageExtent,
+                                                                                     firstImages,
+                                                                                     secondImages,
+                                                                                     std::addressof(state.config)));
                 Logger::debug("created FxaaEffect");
             }
-            else if (effectStrings[i] == std::string("cas"))
+            else if (effectStrings[i] == "cas")
             {
-                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(new CasEffect(
-                    std::addressof(logicalDevice), unormFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
+                pLogicalSwapchain->effects.emplace_back(std::make_shared<CasEffect>(std::addressof(logicalDevice),
+                                                                                    unormFormat,
+                                                                                    pLogicalSwapchain->imageExtent,
+                                                                                    firstImages,
+                                                                                    secondImages,
+                                                                                    std::addressof(state.config)));
                 Logger::debug("created CasEffect");
             }
-            else if (effectStrings[i] == std::string("deband"))
+            else if (effectStrings[i] == "deband")
             {
-                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(new DebandEffect(
-                    std::addressof(logicalDevice), unormFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
+                pLogicalSwapchain->effects.emplace_back(std::make_shared<DebandEffect>(std::addressof(logicalDevice),
+                                                                                       unormFormat,
+                                                                                       pLogicalSwapchain->imageExtent,
+                                                                                       firstImages,
+                                                                                       secondImages,
+                                                                                       std::addressof(state.config)));
                 Logger::debug("created DebandEffect");
             }
-            else if (effectStrings[i] == std::string("smaa"))
+            else if (effectStrings[i] == "smaa")
             {
-                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(new SmaaEffect(
-                    std::addressof(logicalDevice), unormFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
+                pLogicalSwapchain->effects.emplace_back(std::make_shared<SmaaEffect>(std::addressof(logicalDevice),
+                                                                                     unormFormat,
+                                                                                     pLogicalSwapchain->imageExtent,
+                                                                                     firstImages,
+                                                                                     secondImages,
+                                                                                     std::addressof(state.config)));
                 Logger::debug("created SmaaEffect");
             }
-            else if (effectStrings[i] == std::string("lut"))
+            else if (effectStrings[i] == "lut")
             {
-                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(new LutEffect(
-                    std::addressof(logicalDevice), unormFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
+                pLogicalSwapchain->effects.emplace_back(std::make_shared<LutEffect>(std::addressof(logicalDevice),
+                                                                                    unormFormat,
+                                                                                    pLogicalSwapchain->imageExtent,
+                                                                                    firstImages,
+                                                                                    secondImages,
+                                                                                    std::addressof(state.config)));
                 Logger::debug("created LutEffect");
             }
-            else if (effectStrings[i] == std::string("dls"))
+            else if (effectStrings[i] == "dls")
             {
-                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(new DlsEffect(
-                    std::addressof(logicalDevice), unormFormat, pLogicalSwapchain->imageExtent, firstImages, secondImages, pConfig.get())));
+                pLogicalSwapchain->effects.emplace_back(std::make_shared<DlsEffect>(std::addressof(logicalDevice),
+                                                                                    unormFormat,
+                                                                                    pLogicalSwapchain->imageExtent,
+                                                                                    firstImages,
+                                                                                    secondImages,
+                                                                                    std::addressof(state.config)));
                 Logger::debug("created DlsEffect");
             }
             else
             {
-                pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(new ReshadeEffect(std::addressof(logicalDevice),
-                                                                                               pLogicalSwapchain->format,
-                                                                                               pLogicalSwapchain->imageExtent,
-                                                                                               firstImages,
-                                                                                               secondImages,
-                                                                                               pConfig.get(),
-                                                                                               effectStrings[i])));
+                pLogicalSwapchain->effects.emplace_back(std::make_shared<ReshadeEffect>(std::addressof(logicalDevice),
+                                                                                        pLogicalSwapchain->format,
+                                                                                        pLogicalSwapchain->imageExtent,
+                                                                                        firstImages,
+                                                                                        secondImages,
+                                                                                        std::addressof(state.config),
+                                                                                        effectStrings[i]));
                 Logger::debug("created ReshadeEffect");
             }
         }
 
         if (!logicalDevice.supportsMutableFormat)
         {
-            pLogicalSwapchain->effects.push_back(std::shared_ptr<Effect>(new TransferEffect(
+            pLogicalSwapchain->effects.emplace_back(std::make_shared<TransferEffect>(
                 std::addressof(logicalDevice),
                 pLogicalSwapchain->format,
                 pLogicalSwapchain->imageExtent,
                 std::vector<VkImage>(pLogicalSwapchain->fakeImages.end() - pLogicalSwapchain->imageCount, pLogicalSwapchain->fakeImages.end()),
                 pLogicalSwapchain->images,
-                pConfig.get())));
+                std::addressof(state.config)));
         }
 
         VkImageView depthImageView = logicalDevice.depthImageViews.size() ? logicalDevice.depthImageViews[0] : VK_NULL_HANDLE;
@@ -537,13 +652,13 @@ namespace vkBasalt
         }
         Logger::trace("vkGetSwapchainImagesKHR");
 
-        pLogicalSwapchain->defaultTransfer = std::shared_ptr<Effect>(new TransferEffect(
+        pLogicalSwapchain->defaultTransfer = std::make_shared<TransferEffect>(
             std::addressof(logicalDevice),
             pLogicalSwapchain->format,
             pLogicalSwapchain->imageExtent,
             std::vector<VkImage>(pLogicalSwapchain->fakeImages.begin(), pLogicalSwapchain->fakeImages.begin() + pLogicalSwapchain->imageCount),
             pLogicalSwapchain->images,
-            pConfig.get()));
+            std::addressof(state.config));
 
         pLogicalSwapchain->commandBuffersNoEffect = allocateCommandBuffer(std::addressof(logicalDevice), pLogicalSwapchain->imageCount);
 
@@ -564,14 +679,15 @@ namespace vkBasalt
         return *pCount < pLogicalSwapchain->imageCount ? VK_INCOMPLETE : VK_SUCCESS;
     }
 
-    VKAPI_ATTR VkResult VKAPI_CALL vkBasalt_QueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
+    VKAPI_ATTR VkResult VKAPI_CALL GlobalState::QueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
     {
-        std::scoped_lock lock(globalLock);
+        auto&            state = GlobalState::Get();
+        const std::scoped_lock lock{state.globalLock};
 
-        static uint32_t keySymbol = convertToKeySym(pConfig->getOption<std::string>("toggleKey", "Home"));
+        static uint32_t keySymbol = convertToKeySym(state.config.getOption<std::string>("toggleKey", "Home"));
 
         static bool pressed       = false;
-        static bool presentEffect = pConfig->getOption<bool>("enableOnLaunch", true);
+        static bool presentEffect = state.config.getOption<bool>("enableOnLaunch", true);
 
         if (isKeyPressed(keySymbol))
         {
@@ -586,10 +702,10 @@ namespace vkBasalt
             pressed = false;
         }
 
-        const auto deviceIt{deviceMap.find(GetKey(queue))};
-        if (deviceIt == std::cend(deviceMap))
+        const auto deviceIt{state.deviceMap.find(GetKey(queue))};
+        if (deviceIt == std::cend(state.deviceMap))
         {
-            return VK_ERROR_UNKNOWN;
+            return VkResult::VK_ERROR_UNKNOWN;
         }
         auto& [_, logicalDevice] = *deviceIt;
 
@@ -602,7 +718,7 @@ namespace vkBasalt
         {
             uint32_t          index             = (*pPresentInfo).pImageIndices[i];
             VkSwapchainKHR    swapchain         = (*pPresentInfo).pSwapchains[i];
-            LogicalSwapchain* pLogicalSwapchain = swapchainMap[swapchain].get();
+            LogicalSwapchain* pLogicalSwapchain = state.swapchainMap[swapchain].get(); // TODO: safe access to map
 
             for (auto& effect : pLogicalSwapchain->effects)
             {
@@ -638,7 +754,7 @@ namespace vkBasalt
         return logicalDevice.vkd.QueuePresentKHR(queue, &presentInfo);
     }
 
-    VKAPI_ATTR void VKAPI_CALL vkBasalt_DestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapchain, const VkAllocationCallbacks* pAllocator)
+    VKAPI_ATTR void VKAPI_CALL GlobalState::DestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapchain, const VkAllocationCallbacks* pAllocator)
     {
         if (!swapchain)
         {
@@ -646,28 +762,31 @@ namespace vkBasalt
             return;
         }
 
-        std::scoped_lock lock(globalLock);
+        auto& state = GlobalState::Get();
+
+        const std::scoped_lock lock{state.globalLock};
         // we need to delete the infos of the oldswapchain
 
         Logger::trace("vkDestroySwapchainKHR " + convertToString(swapchain));
-        swapchainMap[swapchain]->destroy();
-        swapchainMap.erase(swapchain);
+        state.swapchainMap[swapchain]->destroy(); // TODO: safe access to map, maybe extract
+        state.swapchainMap.erase(swapchain);
 
-        if (const auto deviceIt{deviceMap.find(GetKey(device))}; deviceIt != std::cend(deviceMap))
+        if (const auto deviceIt{state.deviceMap.find(GetKey(device))}; deviceIt != std::cend(state.deviceMap))
         {
             deviceIt->second.vkd.DestroySwapchainKHR(device, swapchain, pAllocator);
         }
     }
 
-    VKAPI_ATTR VkResult VKAPI_CALL vkBasalt_CreateImage(VkDevice                     device,
-                                                        const VkImageCreateInfo*     pCreateInfo,
-                                                        const VkAllocationCallbacks* pAllocator,
-                                                        VkImage*                     pImage)
+    VKAPI_ATTR VkResult VKAPI_CALL GlobalState::CreateImage(VkDevice                     device,
+                                                            const VkImageCreateInfo*     pCreateInfo,
+                                                            const VkAllocationCallbacks* pAllocator,
+                                                            VkImage*                     pImage)
     {
-        std::scoped_lock lock(globalLock);
+        auto&            state = GlobalState::Get();
+        const std::scoped_lock lock{state.globalLock};
 
-        const auto deviceIt{deviceMap.find(GetKey(device))};
-        if (deviceIt == std::cend(deviceMap))
+        const auto deviceIt{state.deviceMap.find(GetKey(device))};
+        if (deviceIt == std::cend(state.deviceMap))
         {
             return VK_ERROR_UNKNOWN;
         }
@@ -695,12 +814,13 @@ namespace vkBasalt
         }
     }
 
-    VKAPI_ATTR VkResult VKAPI_CALL vkBasalt_BindImageMemory(VkDevice device, VkImage image, VkDeviceMemory memory, VkDeviceSize memoryOffset)
+    VKAPI_ATTR VkResult VKAPI_CALL GlobalState::BindImageMemory(VkDevice device, VkImage image, VkDeviceMemory memory, VkDeviceSize memoryOffset)
     {
-        std::scoped_lock lock(globalLock);
+        auto&                  state = GlobalState::Get();
+        const std::scoped_lock lock{state.globalLock};
 
-        const auto deviceIt{deviceMap.find(GetKey(device))};
-        if (deviceIt == std::cend(deviceMap))
+        const auto deviceIt{state.deviceMap.find(GetKey(device))};
+        if (deviceIt == std::cend(state.deviceMap))
         {
             return VK_ERROR_UNKNOWN;
         }
@@ -726,7 +846,7 @@ namespace vkBasalt
                 return result;
             }
 
-            for (auto& it : swapchainMap)
+            for (auto& it : state.swapchainMap)
             {
                 LogicalSwapchain* pLogicalSwapchain = it.second.get();
                 if (pLogicalSwapchain->pLogicalDevice == std::addressof(logicalDevice))
@@ -755,7 +875,7 @@ namespace vkBasalt
         return result;
     }
 
-    VKAPI_ATTR void VKAPI_CALL vkBasalt_DestroyImage(VkDevice device, VkImage image, const VkAllocationCallbacks* pAllocator)
+    VKAPI_ATTR void VKAPI_CALL GlobalState::DestroyImage(VkDevice device, VkImage image, const VkAllocationCallbacks* pAllocator)
     {
         if (!image)
         {
@@ -763,10 +883,11 @@ namespace vkBasalt
             return;
         }
 
-        std::scoped_lock lock(globalLock);
+        auto&                  state = GlobalState::Get();
+        const std::scoped_lock lock{state.globalLock};
 
-        const auto deviceIt{deviceMap.find(GetKey(device))};
-        if (deviceIt == std::cend(deviceMap))
+        const auto deviceIt{state.deviceMap.find(GetKey(device))};
+        if (deviceIt == std::cend(state.deviceMap))
         {
             Logger::err("could not find device in map");
             return;
@@ -790,7 +911,7 @@ namespace vkBasalt
                 VkImageView depthImageView = logicalDevice.depthImageViews.size() ? logicalDevice.depthImageViews[0] : VK_NULL_HANDLE;
                 VkImage     depthImage     = logicalDevice.depthImageViews.size() ? logicalDevice.depthImages[0] : VK_NULL_HANDLE;
                 VkFormat    depthFormat    = logicalDevice.depthImageViews.size() ? logicalDevice.depthFormats[0] : VK_FORMAT_UNDEFINED;
-                for (auto& it : swapchainMap)
+                for (auto& it : state.swapchainMap)
                 {
                     LogicalSwapchain* pLogicalSwapchain = it.second.get();
                     if (pLogicalSwapchain->pLogicalDevice == std::addressof(logicalDevice))
@@ -825,13 +946,14 @@ namespace vkBasalt
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Enumeration function
 
-    VkResult VKAPI_CALL vkBasalt_EnumerateInstanceLayerProperties(uint32_t* pPropertyCount, VkLayerProperties* pProperties)
+    VkResult VKAPI_CALL GlobalState::EnumerateInstanceLayerProperties(uint32_t* pPropertyCount, VkLayerProperties* pProperties)
     {
         if (pPropertyCount)
         {
             *pPropertyCount = 1;
         }
 
+        // TODO: strange logic
         if (pProperties)
         {
             static constexpr auto description{"a post processing layer"sv};
@@ -848,16 +970,16 @@ namespace vkBasalt
         return VK_SUCCESS;
     }
 
-    VkResult VKAPI_CALL vkBasalt_EnumerateDeviceLayerProperties(VkPhysicalDevice   physicalDevice,
-                                                                uint32_t*          pPropertyCount,
-                                                                VkLayerProperties* pProperties)
+    VkResult VKAPI_CALL GlobalState::EnumerateDeviceLayerProperties(VkPhysicalDevice   physicalDevice,
+                                                                    uint32_t*          pPropertyCount,
+                                                                    VkLayerProperties* pProperties)
     {
-        return vkBasalt_EnumerateInstanceLayerProperties(pPropertyCount, pProperties);
+        return GlobalState::EnumerateInstanceLayerProperties(pPropertyCount, pProperties);
     }
 
-    VkResult VKAPI_CALL vkBasalt_EnumerateInstanceExtensionProperties(const char*            pLayerName,
-                                                                      uint32_t*              pPropertyCount,
-                                                                      VkExtensionProperties* pProperties)
+    VkResult VKAPI_CALL GlobalState::EnumerateInstanceExtensionProperties(const char*            pLayerName,
+                                                                          uint32_t*              pPropertyCount,
+                                                                          VkExtensionProperties* pProperties)
     {
         if (pLayerName == NULL || pLayerName == vkBasaltVkLayerName)
         {
@@ -872,10 +994,10 @@ namespace vkBasalt
         return VK_SUCCESS;
     }
 
-    VkResult VKAPI_CALL vkBasalt_EnumerateDeviceExtensionProperties(VkPhysicalDevice       physicalDevice,
-                                                                    const char*            pLayerName,
-                                                                    uint32_t*              pPropertyCount,
-                                                                    VkExtensionProperties* pProperties)
+    VkResult VKAPI_CALL GlobalState::EnumerateDeviceExtensionProperties(VkPhysicalDevice       physicalDevice,
+                                                                        const char*            pLayerName,
+                                                                        uint32_t*              pPropertyCount,
+                                                                        VkExtensionProperties* pProperties)
     {
         // pass through any queries that aren't to us
         if (pLayerName == NULL || pLayerName == vkBasaltVkLayerName)
@@ -885,8 +1007,9 @@ namespace vkBasalt
                 return VK_SUCCESS;
             }
 
-            std::scoped_lock lock(globalLock);
-            if (const auto instanceIt{instanceMap.find(GetKey(physicalDevice))}; instanceIt != std::cend(instanceMap))
+            auto&                  state = GlobalState::Get();
+            const std::scoped_lock lock{state.globalLock};
+            if (const auto instanceIt{state.instanceMap.find(GetKey(physicalDevice))}; instanceIt != std::cend(state.instanceMap))
             {
                 return instanceIt->second.dispatch.EnumerateDeviceExtensionProperties(physicalDevice, pLayerName, pPropertyCount, pProperties);
             }
@@ -901,89 +1024,135 @@ namespace vkBasalt
         }
         return VK_SUCCESS;
     }
+
+    PFN_vkVoidFunction VKAPI_CALL GlobalState::GetDeviceProcAddr(VkDevice device, const char* pName)
+    {
+        // return overriden procedures
+        return InterceptedCalls(pName)
+            .or_else([device, pName]() -> std::optional<PFN_vkVoidFunction> {
+                // return proc from device dispatch table
+                auto&                  state = GlobalState::Get();
+                const std::scoped_lock _{state.globalLock};
+                if (const auto deviceIt{state.deviceMap.find(vkBasalt::GetKey(device))}; deviceIt != std::cend(state.deviceMap))
+                {
+                    return deviceIt->second.vkd.GetDeviceProcAddr(device, pName);
+                }
+                return std::nullopt;
+            })
+            .value_or(nullptr);
+    }
+
+    PFN_vkVoidFunction VKAPI_CALL GlobalState::GetInstanceProcAddr(VkInstance instance, const char* pName)
+    {
+        return InterceptedCalls(pName)
+            .or_else([instance, pName]() -> std::optional<PFN_vkVoidFunction> {
+                auto&                  state = GlobalState::Get();
+                const std::scoped_lock _(state.globalLock);
+                if (const auto instanceIt{state.instanceMap.find(vkBasalt::GetKey(instance))}; instanceIt != std::cend(state.instanceMap))
+                {
+                    return instanceIt->second.dispatch.GetInstanceProcAddr(instance, pName);
+                }
+                return std::nullopt;
+            })
+            .value_or(nullptr);
+    }
+
+    std::optional<PFN_vkVoidFunction> GlobalState::InterceptedCalls(std::string_view procName)
+    {
+        // instance chain functions we intercept
+        if (procName == "vkGetInstanceProcAddr")
+        {
+            return (PFN_vkVoidFunction) std::addressof(GetInstanceProcAddr);
+        }
+        if (procName == "vkEnumerateInstanceLayerProperties")
+        {
+            return (PFN_vkVoidFunction) std::addressof(EnumerateInstanceLayerProperties);
+        }
+        if (procName == "vkEnumerateInstanceExtensionProperties")
+        {
+            return (PFN_vkVoidFunction) std::addressof(EnumerateInstanceExtensionProperties);
+        }
+        if (procName == "vkCreateInstance")
+        {
+            return (PFN_vkVoidFunction) std::addressof(CreateInstance);
+        }
+        if (procName == "vkDestroyInstance")
+        {
+            return (PFN_vkVoidFunction) std::addressof(DestroyInstance);
+        }
+        // device chain functions we intercept
+        // vkGetDeviceProcAddr needs to behave like vkGetInstanceProcAddr thanks to some games
+        if (procName == "vkGetDeviceProcAddr")
+        {
+            return (PFN_vkVoidFunction) std::addressof(GetDeviceProcAddr);
+        }
+        if (procName == "vkEnumerateDeviceLayerProperties")
+        {
+            return (PFN_vkVoidFunction) std::addressof(EnumerateDeviceLayerProperties);
+        }
+        if (procName == "vkEnumerateDeviceExtensionProperties")
+        {
+            return (PFN_vkVoidFunction) std::addressof(EnumerateDeviceExtensionProperties);
+        }
+        if (procName == "vkCreateDevice")
+        {
+            return (PFN_vkVoidFunction) std::addressof(CreateDevice);
+        }
+        if (procName == "vkDestroyDevice")
+        {
+            return (PFN_vkVoidFunction) std::addressof(DestroyDevice);
+        }
+        if (procName == "vkCreateSwapchainKHR")
+        {
+            return (PFN_vkVoidFunction) std::addressof(CreateSwapchainKHR);
+        }
+        if (procName == "vkGetSwapchainImagesKHR")
+        {
+            return (PFN_vkVoidFunction) std::addressof(GetSwapchainImagesKHR);
+        }
+        if (procName == "vkQueuePresentKHR")
+        {
+            return (PFN_vkVoidFunction) std::addressof(QueuePresentKHR);
+        }
+        if (procName == "vkDestroySwapchainKHR")
+        {
+            return (PFN_vkVoidFunction) std::addressof(DestroySwapchainKHR);
+        }
+
+        // TODO: save state
+        if (auto& state = GlobalState::Get(); state.config.getOption<std::string>("depthCapture", "off") != "on")
+        {
+            return std::nullopt;
+        }
+
+        if (procName == "vkCreateImage")
+        {
+            return (PFN_vkVoidFunction) std::addressof(CreateImage);
+        }
+        if (procName == "vkDestroyImage")
+        {
+            return (PFN_vkVoidFunction) std::addressof(DestroyImage);
+        }
+        if (procName == "vkBindImageMemory")
+        {
+            return (PFN_vkVoidFunction) std::addressof(BindImageMemory);
+        }
+
+        return std::nullopt;
+    }
+
 } // namespace vkBasalt
 
 extern "C"
 { // these are the entry points for the layer, so they need to be c-linkeable
-
-    VKBASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetDeviceProcAddr(VkDevice device, const char* pName);
-    VKBASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetInstanceProcAddr(VkInstance instance, const char* pName);
-
-#define GETPROCADDR(func) \
-    if (!std::strcmp(pName, "vk" #func)) \
-        return (PFN_vkVoidFunction) & vkBasalt::vkBasalt_##func;
-    /*
-    Return our funktions for the funktions we want to intercept
-    the macro takes the name and returns our vkBasalt_##func, if the name is equal
-    */
-
-    // vkGetDeviceProcAddr needs to behave like vkGetInstanceProcAddr thanks to some games
-#define INTERCEPT_CALLS \
-    /* instance chain functions we intercept */ \
-    if (!std::strcmp(pName, "vkGetInstanceProcAddr")) \
-        return (PFN_vkVoidFunction) & vkBasalt_GetInstanceProcAddr; \
-    GETPROCADDR(EnumerateInstanceLayerProperties); \
-    GETPROCADDR(EnumerateInstanceExtensionProperties); \
-    GETPROCADDR(CreateInstance); \
-    GETPROCADDR(DestroyInstance); \
-\
-    /* device chain functions we intercept*/ \
-    if (!std::strcmp(pName, "vkGetDeviceProcAddr")) \
-        return (PFN_vkVoidFunction) & vkBasalt_GetDeviceProcAddr; \
-    GETPROCADDR(EnumerateDeviceLayerProperties); \
-    GETPROCADDR(EnumerateDeviceExtensionProperties); \
-    GETPROCADDR(CreateDevice); \
-    GETPROCADDR(DestroyDevice); \
-    GETPROCADDR(CreateSwapchainKHR); \
-    GETPROCADDR(GetSwapchainImagesKHR); \
-    GETPROCADDR(QueuePresentKHR); \
-    GETPROCADDR(DestroySwapchainKHR); \
-\
-    if (vkBasalt::pConfig->getOption<std::string>("depthCapture", "off") == "on") \
-    { \
-        GETPROCADDR(CreateImage); \
-        GETPROCADDR(DestroyImage); \
-        GETPROCADDR(BindImageMemory); \
-    }
-
     VKBASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetDeviceProcAddr(VkDevice device, const char* pName)
     {
-        if (vkBasalt::pConfig == nullptr)
-        {
-            vkBasalt::pConfig = std::shared_ptr<vkBasalt::Config>(new vkBasalt::Config());
-        }
-
-        INTERCEPT_CALLS
-
-        {
-            std::scoped_lock lock(vkBasalt::globalLock);
-            if (const auto deviceIt{vkBasalt::deviceMap.find(vkBasalt::GetKey(device))}; deviceIt != std::cend(vkBasalt::deviceMap))
-            {
-                return deviceIt->second.vkd.GetDeviceProcAddr(device, pName);
-            }
-
-            return nullptr;
-        }
+        return vkBasalt::GlobalState::GetDeviceProcAddr(device, pName);
     }
 
     VKBASALT_EXPORT PFN_vkVoidFunction VKAPI_CALL vkBasalt_GetInstanceProcAddr(VkInstance instance, const char* pName)
     {
-        if (vkBasalt::pConfig == nullptr)
-        {
-            vkBasalt::pConfig = std::shared_ptr<vkBasalt::Config>(new vkBasalt::Config());
-        }
-
-        INTERCEPT_CALLS
-
-        {
-            std::scoped_lock lock(vkBasalt::globalLock);
-            if (const auto instanceIt{vkBasalt::instanceMap.find(vkBasalt::GetKey(instance))}; instanceIt != std::cend(vkBasalt::instanceMap))
-            {
-                return instanceIt->second.dispatch.GetInstanceProcAddr(instance, pName);
-            }
-
-            return nullptr;
-        }
+        return vkBasalt::GlobalState::GetInstanceProcAddr(instance, pName);
     }
 
 } // extern "C"
