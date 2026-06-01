@@ -3,8 +3,8 @@
 
 #include <cstdint>
 #include <iostream>
+#include <fstream>
 #include <mutex>
-#include <memory>
 #include <string>
 
 namespace vkBasalt
@@ -50,7 +50,8 @@ namespace vkBasalt
 
         std::mutex m_mutex;
 
-        std::unique_ptr<std::ostream, void (*)(std::ostream*)> m_outStream{nullptr, nullptr};
+        std::ostream* m_outStream{nullptr};
+        std::ofstream m_fileStream;
 
         void emitMsg(LogLevel level, const std::string& message);
     };

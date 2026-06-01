@@ -1,3 +1,4 @@
+#include <iterator>
 #include <logger.hpp>
 #include <array>
 #include <cstdio>
@@ -19,15 +20,21 @@ namespace vkBasalt
     {
         std::string_view GetFileName() noexcept
         {
-            static constexpr std::string_view defaultOutput{"stderr"};
+            static constexpr std::string_view defaultValue{"stderr"};
             const char*                       envVar = std::getenv("VKBASALT_LOG_FILE");
 
-            if (envVar == nullptr || std::empty(std::string_view{envVar}))
+            if (envVar == nullptr)
             {
-                return defaultOutput;
+                return defaultValue;
             }
 
-            return {envVar};
+            const std::string_view value{envVar};
+            if (std::empty(value))
+            {
+                return defaultValue;
+            }
+
+            return value;
         }
 
         LogLevel getMinLogLevel() noexcept
@@ -67,16 +74,16 @@ namespace vkBasalt
             auto filename = GetFileName();
             if (filename == "stderr")
             {
-                m_outStream = std::unique_ptr<std::ostream, void (*)(std::ostream*)>(&std::cerr, [](std::ostream*) {});
+                m_outStream = std::addressof(std::cerr);
             }
             else if (filename == "stdout")
             {
-                m_outStream = std::unique_ptr<std::ostream, void (*)(std::ostream*)>(&std::cout, [](std::ostream*) {});
+                m_outStream = std::addressof(std::cout);
             }
             else
             {
-                m_outStream = std::unique_ptr<std::ostream, void (*)(std::ostream*)>(new std::ofstream(std::data(filename)),
-                                                                                     [](std::ostream* stream) { delete stream; });
+                m_fileStream.open(std::data(filename));
+                m_outStream = std::addressof(m_fileStream);
             }
             return;
         }
@@ -132,10 +139,10 @@ namespace vkBasalt
 
             const std::scoped_lock lock{m_mutex};
 
-            static std::array s_prefixes{
+            constexpr static std::array s_prefixes{
                 "vkBasalt trace: "sv, "vkBasalt debug: "sv, "vkBasalt info:  "sv, "vkBasalt warn:  "sv, "vkBasalt err:   "sv};
 
-            const auto prefix = s_prefixes[std::to_underlying(level)];
+            const auto prefix = s_prefixes.at(std::to_underlying(level));
 
             std::stringstream stream(message);
             std::string       line;
