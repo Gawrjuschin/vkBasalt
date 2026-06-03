@@ -1,5 +1,6 @@
 #include "logical_swapchain.hpp"
 
+#include <cstdint>
 #include <logger.hpp>
 
 namespace vkBasalt
@@ -19,9 +20,9 @@ namespace vkBasalt
 
             pLogicalDevice->vkd.FreeMemory(pLogicalDevice->device, fakeImageMemory, nullptr);
 
-            for (uint32_t i = 0; i < fakeImages.size(); i++)
+            for (auto& fakeImage : fakeImages)
             {
-                pLogicalDevice->vkd.DestroyImage(pLogicalDevice->device, fakeImages[i], nullptr);
+                pLogicalDevice->vkd.DestroyImage(pLogicalDevice->device, fakeImage, nullptr);
             }
 
             for (unsigned int i = 0; i < imageCount; i++)

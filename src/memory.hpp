@@ -2,6 +2,8 @@
 #define MEMORY_HPP_INCLUDED
 
 #include "logical_device.hpp"
+#include <cstdint>
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {

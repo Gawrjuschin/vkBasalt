@@ -3,6 +3,7 @@
 
 #include <span>
 #include <cstdint>
+#include <vulkan/vulkan_core.h>
 
 #include "logical_device.hpp"
 

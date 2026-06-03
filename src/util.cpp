@@ -1,7 +1,10 @@
 #include "util.hpp"
 
 #include <iostream>
+#include <string>
+#include <cstdio>
 #include <unistd.h>
+#include <vector>
 
 namespace vkBasalt
 {
@@ -17,7 +20,7 @@ namespace vkBasalt
         stringVector.push_back(addString);
     }
 
-    void outputInColor(std::string output, Color foreground, Color background)
+    void outputInColor(std::string_view output, Color foreground, Color background)
     {
         std::vector<std::string> magicNumbers;
         switch (foreground)

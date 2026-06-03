@@ -1,6 +1,7 @@
 #ifndef RESHADE_UNIFORMS_HPP_INCLUDED
 #define RESHADE_UNIFORMS_HPP_INCLUDED
 
+#include <cstdint>
 #include <vector>
 #include <chrono>
 #include <memory>
@@ -18,8 +19,8 @@ namespace vkBasalt
         virtual ~ReshadeUniform()= default;
 
     protected:
-        uint32_t offset;
-        uint32_t size;
+        uint32_t offset{};
+        uint32_t size{};
     };
 
     std::vector<std::shared_ptr<ReshadeUniform>> createReshadeUniforms(reshadefx::module module);

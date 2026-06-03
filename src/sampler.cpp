@@ -1,11 +1,14 @@
 #include "sampler.hpp"
+#include "logical_device.hpp"
+#include "effect_module.hpp"
 #include "vulkan_include.hpp"
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
     VkSampler createSampler(LogicalDevice* pLogicalDevice)
     {
-        VkSampler sampler;
+        VkSampler sampler{};
 
         VkSamplerCreateInfo samplerCreateInfo;
         samplerCreateInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -17,28 +20,28 @@ namespace vkBasalt
         samplerCreateInfo.addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         samplerCreateInfo.addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         samplerCreateInfo.addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerCreateInfo.mipLodBias              = 0.0f;
+        samplerCreateInfo.mipLodBias              = 0.0F;
         samplerCreateInfo.anisotropyEnable        = VK_FALSE;
         samplerCreateInfo.maxAnisotropy           = 16;
         samplerCreateInfo.compareEnable           = VK_FALSE;
         samplerCreateInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
-        samplerCreateInfo.minLod                  = 0.0f;
-        samplerCreateInfo.maxLod                  = 0.0f;
+        samplerCreateInfo.minLod                  = 0.0F;
+        samplerCreateInfo.maxLod                  = 0.0F;
         samplerCreateInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
         samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
 
-        VkResult result = pLogicalDevice->vkd.CreateSampler(pLogicalDevice->device, &samplerCreateInfo, nullptr, &sampler);
+        const auto result = pLogicalDevice->vkd.CreateSampler(pLogicalDevice->device, &samplerCreateInfo, nullptr, &sampler);
         AssertVulkan(result);
         return sampler;
     }
 
     VkSampler createReshadeSampler(LogicalDevice* pLogicalDevice, const reshadefx::sampler_info& samplerInfo)
     {
-        VkSampler sampler;
+        VkSampler sampler{};
 
-        VkFilter            minFilter;
-        VkFilter            magFilter;
-        VkSamplerMipmapMode mipmapMode;
+        VkFilter            minFilter{};
+        VkFilter            magFilter{};
+        VkSamplerMipmapMode mipmapMode{};
         convertReshadeFilter(samplerInfo.filter, minFilter, magFilter, mipmapMode);
 
         VkSamplerCreateInfo samplerCreateInfo;

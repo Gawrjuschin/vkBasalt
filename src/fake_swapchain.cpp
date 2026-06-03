@@ -1,9 +1,14 @@
 #include "fake_swapchain.hpp"
+#include "logical_device.hpp"
 #include "memory.hpp"
 #include "format.hpp"
 #include "vulkan_include.hpp"
 
+#include <cstdint>
 #include <logger.hpp>
+#include <vector>
+#include <vulkan/vulkan_core.h>
+#include <string>
 
 namespace vkBasalt
 {
@@ -47,10 +52,9 @@ namespace vkBasalt
         imageCreateInfo.pQueueFamilyIndices   = swapchainCreateInfo.pQueueFamilyIndices;
         imageCreateInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        VkResult result;
         for (uint32_t i = 0; i < count; i++)
         {
-            result = pLogicalDevice->vkd.CreateImage(pLogicalDevice->device, &imageCreateInfo, nullptr, &(fakeImages[i]));
+            const auto result = pLogicalDevice->vkd.CreateImage(pLogicalDevice->device, &imageCreateInfo, nullptr, &(fakeImages[i]));
             AssertVulkan(result);
         }
 
@@ -73,12 +77,12 @@ namespace vkBasalt
         memoryAllocateInfo.memoryTypeIndex =
             findMemoryTypeIndex(pLogicalDevice, memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-        result = pLogicalDevice->vkd.AllocateMemory(pLogicalDevice->device, &memoryAllocateInfo, nullptr, &deviceMemory);
+        const auto result = pLogicalDevice->vkd.AllocateMemory(pLogicalDevice->device, &memoryAllocateInfo, nullptr, &deviceMemory);
         AssertVulkan(result);
 
         for (uint32_t i = 0; i < count; i++)
         {
-            result = pLogicalDevice->vkd.BindImageMemory(pLogicalDevice->device, fakeImages[i], deviceMemory, memoryRequirements.size * i);
+            const auto result = pLogicalDevice->vkd.BindImageMemory(pLogicalDevice->device, fakeImages[i], deviceMemory, memoryRequirements.size * i);
             AssertVulkan(result);
         }
         return fakeImages;

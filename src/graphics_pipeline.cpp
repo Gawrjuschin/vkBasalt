@@ -1,9 +1,14 @@
 #include "graphics_pipeline.hpp"
+#include "logical_device.hpp"
 #include "vulkan_include.hpp"
+
+#include <string>
+
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
-    VkPipelineLayout createGraphicsPipelineLayout(LogicalDevice* pLogicalDevice, std::vector<VkDescriptorSetLayout> descriptorSetLayouts)
+    VkPipelineLayout createGraphicsPipelineLayout(LogicalDevice* pLogicalDevice, std::span<VkDescriptorSetLayout> descriptorSetLayouts)
     {
         VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo;
         pipelineLayoutCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -14,7 +19,7 @@ namespace vkBasalt
         pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
         pipelineLayoutCreateInfo.pPushConstantRanges    = nullptr;
 
-        VkPipelineLayout pipelineLayout;
+        VkPipelineLayout pipelineLayout{};
         VkResult result = pLogicalDevice->vkd.CreatePipelineLayout(pLogicalDevice->device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
         AssertVulkan(result);
         return pipelineLayout;
@@ -32,9 +37,9 @@ namespace vkBasalt
                                       VkPipelineLayout      pipelineLayout,
                                       bool                  flip)
     {
-        VkResult result;
+        VkResult result{};
 
-        VkPipeline pipeline;
+        VkPipeline pipeline{};
 
         VkPipelineShaderStageCreateInfo shaderStageCreateInfoVert;
         shaderStageCreateInfoVert.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -73,12 +78,12 @@ namespace vkBasalt
         inputAssemblyCreateInfo.primitiveRestartEnable = VK_FALSE;
 
         VkViewport viewport;
-        viewport.x        = 0.0f;
-        viewport.y        = flip ? static_cast<float>(extent.height) : 0.0f;
+        viewport.x        = 0.0F;
+        viewport.y        = flip ? static_cast<float>(extent.height) : 0.0F;
         viewport.width    = static_cast<float>(extent.width);
         viewport.height   = flip ? -static_cast<float>(extent.height) : static_cast<float>(extent.height);
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
+        viewport.minDepth = 0.0F;
+        viewport.maxDepth = 1.0F;
 
         VkRect2D scissor;
         scissor.offset = {0, 0};
@@ -103,10 +108,10 @@ namespace vkBasalt
         rasterizationCreateInfo.cullMode                = VK_CULL_MODE_NONE;
         rasterizationCreateInfo.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         rasterizationCreateInfo.depthBiasEnable         = VK_FALSE;
-        rasterizationCreateInfo.depthBiasConstantFactor = 0.0f;
-        rasterizationCreateInfo.depthBiasClamp          = 0.0f;
-        rasterizationCreateInfo.depthBiasSlopeFactor    = 0.0f;
-        rasterizationCreateInfo.lineWidth               = 1.0f;
+        rasterizationCreateInfo.depthBiasConstantFactor = 0.0F;
+        rasterizationCreateInfo.depthBiasClamp          = 0.0F;
+        rasterizationCreateInfo.depthBiasSlopeFactor    = 0.0F;
+        rasterizationCreateInfo.lineWidth               = 1.0F;
 
         VkPipelineMultisampleStateCreateInfo multisampleCreateInfo;
         multisampleCreateInfo.sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
@@ -114,7 +119,7 @@ namespace vkBasalt
         multisampleCreateInfo.flags                 = 0;
         multisampleCreateInfo.rasterizationSamples  = VK_SAMPLE_COUNT_1_BIT;
         multisampleCreateInfo.sampleShadingEnable   = VK_FALSE;
-        multisampleCreateInfo.minSampleShading      = 1.0f;
+        multisampleCreateInfo.minSampleShading      = 1.0F;
         multisampleCreateInfo.pSampleMask           = nullptr;
         multisampleCreateInfo.alphaToCoverageEnable = VK_FALSE;
         multisampleCreateInfo.alphaToOneEnable      = VK_FALSE;
@@ -139,10 +144,10 @@ namespace vkBasalt
         colorBlendCreateInfo.logicOp           = VK_LOGIC_OP_NO_OP;
         colorBlendCreateInfo.attachmentCount   = 1;
         colorBlendCreateInfo.pAttachments      = &colorBlendAttachment;
-        colorBlendCreateInfo.blendConstants[0] = 0.0f;
-        colorBlendCreateInfo.blendConstants[1] = 0.0f;
-        colorBlendCreateInfo.blendConstants[2] = 0.0f;
-        colorBlendCreateInfo.blendConstants[3] = 0.0f;
+        colorBlendCreateInfo.blendConstants[0] = 0.0F;
+        colorBlendCreateInfo.blendConstants[1] = 0.0F;
+        colorBlendCreateInfo.blendConstants[2] = 0.0F;
+        colorBlendCreateInfo.blendConstants[3] = 0.0F;
 
         VkDynamicState dynamicStates[] = {};
 

@@ -1,6 +1,9 @@
 #include "format.hpp"
+#include "logical_device.hpp"
 
 #include <logger.hpp>
+#include <vulkan/vulkan_core.h>
+#include <vector>
 
 namespace vkBasalt
 {

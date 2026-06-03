@@ -26,6 +26,7 @@
 #include <map>
 #include <optional>
 #include <ranges>
+#include <span>
 #include <string_view>
 #include <vector>
 #include <unordered_map>
@@ -349,9 +350,8 @@ namespace vkBasalt
             std::vector<VkQueueFamilyProperties> queueProperties(count);
 
             logicalDevice.vki.GetPhysicalDeviceQueueFamilyProperties(logicalDevice.physicalDevice, &count, queueProperties.data());
-            for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++)
+            for (const auto& queueInfo : std::span{pCreateInfo->pQueueCreateInfos, pCreateInfo->queueCreateInfoCount})
             {
-                const auto& queueInfo = pCreateInfo->pQueueCreateInfos[i];
                 if ((queueProperties[queueInfo.queueFamilyIndex].queueFlags & VkQueueFlagBits::VK_QUEUE_GRAPHICS_BIT) != 0U)
                 {
                     logicalDevice.vkd.GetDeviceQueue(logicalDevice.device, queueInfo.queueFamilyIndex, 0, &logicalDevice.queue);
@@ -538,13 +538,16 @@ namespace vkBasalt
             const auto unormFormat = convertToUNORM(logicalSwapchain.format);
             const auto srgbFormat  = convertToSRGB(logicalSwapchain.format);
 
+            logicalSwapchain.fakeImages | std::views::chunk(logicalSwapchain.imageCount);
+
             for (uint32_t i = 0; i < std::size(effectStrings); ++i)
             {
                 Logger::debug("current effectString " + effectStrings[i]);
-                std::vector<VkImage> const firstImages(std::next(std::begin(logicalSwapchain.fakeImages), logicalSwapchain.imageCount * i),
-                                                       std::next(std::begin(logicalSwapchain.fakeImages), logicalSwapchain.imageCount * (i + 1)));
+                std::vector<VkImage> firstImages(std::next(std::begin(logicalSwapchain.fakeImages), logicalSwapchain.imageCount * i),
+                                                 std::next(std::begin(logicalSwapchain.fakeImages), logicalSwapchain.imageCount * (i + 1)));
                 Logger::debug(std::to_string(std::size(firstImages)) + " images in firstImages");
                 std::vector<VkImage> secondImages;
+                // for last element of effectStrings
                 if (std::size(effectStrings) == i + 1U)
                 {
                     logicalDevice.supportsMutableFormat
@@ -560,9 +563,10 @@ namespace vkBasalt
                     Logger::debug("not using swapchain images as second images");
                 }
                 Logger::debug(std::to_string(std::size(secondImages)) + " images in secondImages");
+                // TODO: in separate function
                 if (effectStrings[i] == "fxaa")
                 {
-                    logicalSwapchain.effects.emplace_back(std::make_shared<FxaaEffect>(std::addressof(logicalDevice),
+                    logicalSwapchain.effects.emplace_back(std::make_unique<FxaaEffect>(std::addressof(logicalDevice),
                                                                                        srgbFormat,
                                                                                        logicalSwapchain.imageExtent,
                                                                                        firstImages,
@@ -572,7 +576,7 @@ namespace vkBasalt
                 }
                 else if (effectStrings[i] == "cas")
                 {
-                    logicalSwapchain.effects.emplace_back(std::make_shared<CasEffect>(std::addressof(logicalDevice),
+                    logicalSwapchain.effects.emplace_back(std::make_unique<CasEffect>(std::addressof(logicalDevice),
                                                                                       unormFormat,
                                                                                       logicalSwapchain.imageExtent,
                                                                                       firstImages,
@@ -582,7 +586,7 @@ namespace vkBasalt
                 }
                 else if (effectStrings[i] == "deband")
                 {
-                    logicalSwapchain.effects.emplace_back(std::make_shared<DebandEffect>(std::addressof(logicalDevice),
+                    logicalSwapchain.effects.emplace_back(std::make_unique<DebandEffect>(std::addressof(logicalDevice),
                                                                                          unormFormat,
                                                                                          logicalSwapchain.imageExtent,
                                                                                          firstImages,
@@ -592,7 +596,7 @@ namespace vkBasalt
                 }
                 else if (effectStrings[i] == "smaa")
                 {
-                    logicalSwapchain.effects.emplace_back(std::make_shared<SmaaEffect>(std::addressof(logicalDevice),
+                    logicalSwapchain.effects.emplace_back(std::make_unique<SmaaEffect>(std::addressof(logicalDevice),
                                                                                        unormFormat,
                                                                                        logicalSwapchain.imageExtent,
                                                                                        firstImages,
@@ -602,7 +606,7 @@ namespace vkBasalt
                 }
                 else if (effectStrings[i] == "lut")
                 {
-                    logicalSwapchain.effects.emplace_back(std::make_shared<LutEffect>(std::addressof(logicalDevice),
+                    logicalSwapchain.effects.emplace_back(std::make_unique<LutEffect>(std::addressof(logicalDevice),
                                                                                       unormFormat,
                                                                                       logicalSwapchain.imageExtent,
                                                                                       firstImages,
@@ -612,7 +616,7 @@ namespace vkBasalt
                 }
                 else if (effectStrings[i] == "dls")
                 {
-                    logicalSwapchain.effects.emplace_back(std::make_shared<DlsEffect>(std::addressof(logicalDevice),
+                    logicalSwapchain.effects.emplace_back(std::make_unique<DlsEffect>(std::addressof(logicalDevice),
                                                                                       unormFormat,
                                                                                       logicalSwapchain.imageExtent,
                                                                                       firstImages,
@@ -622,7 +626,7 @@ namespace vkBasalt
                 }
                 else
                 {
-                    logicalSwapchain.effects.emplace_back(std::make_shared<ReshadeEffect>(std::addressof(logicalDevice),
+                    logicalSwapchain.effects.emplace_back(std::make_unique<ReshadeEffect>(std::addressof(logicalDevice),
                                                                                           logicalSwapchain.format,
                                                                                           logicalSwapchain.imageExtent,
                                                                                           firstImages,
@@ -633,14 +637,15 @@ namespace vkBasalt
                 }
             }
 
+            // Below does not depend on index
+
             if (!logicalDevice.supportsMutableFormat)
             {
-                logicalSwapchain.effects.emplace_back(std::make_shared<TransferEffect>(
+                logicalSwapchain.effects.emplace_back(std::make_unique<TransferEffect>(
                     std::addressof(logicalDevice),
                     logicalSwapchain.format,
                     logicalSwapchain.imageExtent,
-                    std::vector<VkImage>(std::prev(std::cend(logicalSwapchain.fakeImages), logicalSwapchain.imageCount),
-                                         std::cend(logicalSwapchain.fakeImages)),
+                    std::span{std::prev(std::end(logicalSwapchain.fakeImages), logicalSwapchain.imageCount), std::end(logicalSwapchain.fakeImages)},
                     logicalSwapchain.images,
                     std::addressof(state.config)));
             }
@@ -672,19 +677,18 @@ namespace vkBasalt
             }
             Logger::trace("vkGetSwapchainImagesKHR");
 
-            logicalSwapchain.defaultTransfer = std::make_shared<TransferEffect>(
+            logicalSwapchain.defaultTransfer = std::make_unique<TransferEffect>(
                 std::addressof(logicalDevice),
                 logicalSwapchain.format,
                 logicalSwapchain.imageExtent,
-                std::vector<VkImage>(std::cbegin(logicalSwapchain.fakeImages),
-                                     std::next(std::cbegin(logicalSwapchain.fakeImages), logicalSwapchain.imageCount)),
-                logicalSwapchain.images,
+                std::span{std::begin(logicalSwapchain.fakeImages), std::next(std::begin(logicalSwapchain.fakeImages), logicalSwapchain.imageCount)},
+                std::span{logicalSwapchain.images},
                 std::addressof(state.config));
 
             logicalSwapchain.commandBuffersNoEffect = allocateCommandBuffer(std::addressof(logicalDevice), logicalSwapchain.imageCount);
 
             writeCommandBuffers(std::addressof(logicalDevice),
-                                {logicalSwapchain.defaultTransfer},
+                                std::span{std::addressof(logicalSwapchain.defaultTransfer), 1U},
                                 VK_NULL_HANDLE,
                                 VK_NULL_HANDLE,
                                 VkFormat::VK_FORMAT_UNDEFINED,
@@ -871,7 +875,7 @@ namespace vkBasalt
                 Logger::debug("before creating depth image view");
                 VkImageView depthImageView = createImageViews(std::addressof(logicalDevice),
                                                               logicalDevice.depthFormats[std::size(logicalDevice.depthImages) - 1],
-                                                              {image},
+                                                              std::span{std::addressof(image), 1U},
                                                               VkImageViewType::VK_IMAGE_VIEW_TYPE_2D,
                                                               VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT)[0];
 

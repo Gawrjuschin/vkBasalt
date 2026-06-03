@@ -3,7 +3,9 @@
 
 #include "vkdispatch.hpp"
 
+#include <cstdint>
 #include <vector>
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {

@@ -4,8 +4,10 @@
 #include "effect.hpp"
 #include "logical_device.hpp"
 
+#include <cstdint>
 #include <vector>
 #include <memory>
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
@@ -22,8 +24,8 @@ namespace vkBasalt
         std::vector<VkCommandBuffer>         commandBuffersEffect;
         std::vector<VkCommandBuffer>         commandBuffersNoEffect;
         std::vector<VkSemaphore>             semaphores;
-        std::vector<std::shared_ptr<Effect>> effects;
-        std::shared_ptr<Effect>              defaultTransfer;
+        std::vector<std::unique_ptr<Effect>> effects;
+        std::unique_ptr<Effect>              defaultTransfer;
         VkDeviceMemory                       fakeImageMemory;
 
         void destroy();

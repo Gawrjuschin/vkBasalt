@@ -1,6 +1,9 @@
 #include "memory.hpp"
+#include "logical_device.hpp"
 
+#include <cstdint>
 #include <logger.hpp>
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {

@@ -1,6 +1,8 @@
 #include "effect_smaa.hpp"
+#include "config.hpp"
 #include "image_view.hpp"
 #include "descriptor_set.hpp"
+#include "logical_device.hpp"
 #include "renderpass.hpp"
 #include "graphics_pipeline.hpp"
 #include "framebuffer.hpp"
@@ -13,25 +15,43 @@
 #include <Textures/AreaTex.h>
 #include <Textures/SearchTex.h>
 
+#include <iterator>
+#include <cstdint>
 #include <logger.hpp>
+#include <memory>
+#include <vulkan/vulkan_core.h>
+#include <span>
+#include <vector>
 
 namespace vkBasalt
 {
-    SmaaEffect::SmaaEffect(LogicalDevice*       pLogicalDevice,
-                           VkFormat             format,
-                           VkExtent2D           imageExtent,
-                           std::vector<VkImage> inputImages,
-                           std::vector<VkImage> outputImages,
-                           Config*              pConfig)
+    namespace
+    {
+
+        // get config options
+        struct SmaaOptions
+        {
+            float   screenWidth;
+            float   screenHeight;
+            float   reverseScreenWidth;
+            float   reverseScreenHeight;
+            float   threshold;
+            int32_t maxSearchSteps;
+            int32_t maxSearchStepsDiag;
+            int32_t cornerRounding;
+        };
+    } // namespace
+
+    SmaaEffect::SmaaEffect(LogicalDevice*           pLogicalDevice,
+                           VkFormat                 format,
+                           VkExtent2D               imageExtent,
+                           std::span<const VkImage> inputImages,
+                           std::span<const VkImage> outputImages,
+                           Config*                  pConfig) :
+        pLogicalDevice{pLogicalDevice}, inputImages(std::cbegin(inputImages), std::cend(inputImages)),
+        outputImages(std::cbegin(outputImages), std::cend(outputImages)), imageExtent{imageExtent}, format{format}, pConfig{pConfig}
     {
         Logger::debug("in creating SmaaEffect");
-
-        this->pLogicalDevice = pLogicalDevice;
-        this->format         = format;
-        this->imageExtent    = imageExtent;
-        this->inputImages    = inputImages;
-        this->outputImages   = outputImages;
-        this->pConfig        = pConfig;
 
         // create Images for the first and second pass at once -> less memory fragmentation
         std::vector<VkImage> edgeAndBlendImages = createImages(pLogicalDevice,
@@ -42,8 +62,8 @@ namespace vkBasalt
                                                                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                                                                imageMemory);
 
-        edgeImages  = std::vector<VkImage>(edgeAndBlendImages.begin(), edgeAndBlendImages.begin() + edgeAndBlendImages.size() / 2);
-        blendImages = std::vector<VkImage>(edgeAndBlendImages.begin() + edgeAndBlendImages.size() / 2, edgeAndBlendImages.end());
+        edgeImages.assign(std::cbegin(edgeAndBlendImages), std::next(std::cbegin(edgeAndBlendImages), std::size(edgeAndBlendImages) / 2));
+        blendImages.assign(std::next(std::cbegin(edgeAndBlendImages), std::size(edgeAndBlendImages) / 2), std::cend(edgeAndBlendImages));
 
         inputImageViews = createImageViews(pLogicalDevice, format, inputImages);
         Logger::debug("created input ImageViews");
@@ -80,9 +100,9 @@ namespace vkBasalt
 
         uploadToImage(pLogicalDevice, searchImage, searchImageExtent, SEARCHTEX_SIZE, searchTexBytes);
 
-        areaImageView = createImageViews(pLogicalDevice, VK_FORMAT_R8G8_UNORM, std::vector<VkImage>(1, areaImage))[0];
+        areaImageView = createImageViews(pLogicalDevice, VK_FORMAT_R8G8_UNORM, std::span{std::addressof(areaImage), 1U})[0];
         Logger::debug("after creating area ImageView");
-        searchImageView = createImageViews(pLogicalDevice, VK_FORMAT_R8_UNORM, std::vector<VkImage>(1, searchImage))[0];
+        searchImageView = createImageViews(pLogicalDevice, VK_FORMAT_R8_UNORM, std::span{std::addressof(searchImage), 1U})[0];
         Logger::debug("created search ImageView");
 
         imageSamplerDescriptorSetLayout = createImageSamplerDescriptorSetLayout(pLogicalDevice, 5);
@@ -90,31 +110,21 @@ namespace vkBasalt
 
         VkDescriptorPoolSize imagePoolSize;
         imagePoolSize.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        imagePoolSize.descriptorCount = inputImages.size() * 5;
+        imagePoolSize.descriptorCount = std::size(inputImages) * 5;
 
-        std::vector<VkDescriptorPoolSize> poolSizes = {imagePoolSize};
-
-        descriptorPool = createDescriptorPool(pLogicalDevice, poolSizes);
+        descriptorPool = createDescriptorPool(pLogicalDevice, std::span{std::addressof(imagePoolSize), 1U});
         Logger::debug("created descriptorPool");
 
-        // get config options
-        struct SmaaOptions
-        {
-            float   screenWidth;
-            float   screenHeight;
-            float   reverseScreenWidth;
-            float   reverseScreenHeight;
-            float   threshold;
-            int32_t maxSearchSteps;
-            int32_t maxSearchStepsDiag;
-            int32_t cornerRounding;
+        SmaaOptions smaaOptions{
+            .screenWidth         = static_cast<float>(imageExtent.width),
+            .screenHeight        = static_cast<float>(imageExtent.height),
+            .reverseScreenWidth  = 1.0F / imageExtent.width,
+            .reverseScreenHeight = 1.0F / imageExtent.height,
+            .threshold           = pConfig->getOption<float>("smaaThreshold", 0.05F),
+            .maxSearchSteps      = pConfig->getOption<int32_t>("smaaMaxSearchSteps", 32),
+            .maxSearchStepsDiag  = pConfig->getOption<int32_t>("smaaMaxSearchStepsDiag", 16),
+            .cornerRounding      = pConfig->getOption<int32_t>("smaaCornerRounding", 25),
         };
-
-        SmaaOptions smaaOptions;
-        smaaOptions.threshold          = pConfig->getOption<float>("smaaThreshold", 0.05f);
-        smaaOptions.maxSearchSteps     = pConfig->getOption<int32_t>("smaaMaxSearchSteps", 32);
-        smaaOptions.maxSearchStepsDiag = pConfig->getOption<int32_t>("smaaMaxSearchStepsDiag", 16);
-        smaaOptions.cornerRounding     = pConfig->getOption<int32_t>("smaaCornerRounding", 25);
 
         createShaderModule(pLogicalDevice, smaa_edge_vert, &edgeVertexModule);
 
@@ -137,22 +147,19 @@ namespace vkBasalt
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts = {imageSamplerDescriptorSetLayout};
         pipelineLayout                                          = createGraphicsPipelineLayout(pLogicalDevice, descriptorSetLayouts);
 
-        std::vector<VkSpecializationMapEntry> specMapEntrys(8);
-        for (uint32_t i = 0; i < specMapEntrys.size(); i++)
+        std::array<VkSpecializationMapEntry, 8U> specMapEntrys{}; // TODO: why 8
+        for (uint32_t i = 0; i < std::size(specMapEntrys); ++i)
         {
             specMapEntrys[i].constantID = i;
             specMapEntrys[i].offset     = sizeof(float) * i; // TODO not clean to assume that sizeof(int32_t) == sizeof(float)
             specMapEntrys[i].size       = sizeof(float);
         }
-        smaaOptions.screenWidth = (float) imageExtent.width, smaaOptions.screenHeight = (float) imageExtent.height,
-        smaaOptions.reverseScreenWidth  = 1.0f / imageExtent.width;
-        smaaOptions.reverseScreenHeight = 1.0f / imageExtent.height;
 
         VkSpecializationInfo specializationInfo;
-        specializationInfo.mapEntryCount = specMapEntrys.size();
-        specializationInfo.pMapEntries   = specMapEntrys.data();
-        specializationInfo.dataSize      = sizeof(smaaOptions);
-        specializationInfo.pData         = &smaaOptions;
+        specializationInfo.mapEntryCount = std::size(specMapEntrys);
+        specializationInfo.pMapEntries   = std::data(specMapEntrys);
+        specializationInfo.dataSize      = sizeof(SmaaOptions);
+        specializationInfo.pData         = std::addressof(smaaOptions);
 
         edgePipeline = createGraphicsPipeline(pLogicalDevice,
                                               edgeVertexModule,
@@ -196,7 +203,7 @@ namespace vkBasalt
         imageDescriptorSets = allocateAndWriteImageSamplerDescriptorSets(pLogicalDevice,
                                                                          descriptorPool,
                                                                          imageSamplerDescriptorSetLayout,
-                                                                         std::vector<VkSampler>(imageViewsVector.size(), sampler),
+                                                                         std::vector<VkSampler>(std::size(imageViewsVector), sampler),
                                                                          imageViewsVector);
 
         edgeFramebuffers     = createFramebuffers(pLogicalDevice, unormRenderPass, imageExtent, {edgeImageViews});
@@ -253,7 +260,7 @@ namespace vkBasalt
         renderPassBeginInfo.framebuffer       = edgeFramebuffers[imageIndex];
         renderPassBeginInfo.renderArea.offset = {0, 0};
         renderPassBeginInfo.renderArea.extent = imageExtent;
-        VkClearValue clearValue               = {0.0f, 0.0f, 0.0f, 1.0f};
+        VkClearValue clearValue               = {0.0F, 0.0F, 0.0F, 1.0F};
         renderPassBeginInfo.clearValueCount   = 1;
         renderPassBeginInfo.pClearValues      = &clearValue;
         // edge renderPass
@@ -350,7 +357,8 @@ namespace vkBasalt
         pLogicalDevice->vkd.FreeMemory(pLogicalDevice->device, imageMemory, nullptr);
         pLogicalDevice->vkd.FreeMemory(pLogicalDevice->device, areaMemory, nullptr);
         pLogicalDevice->vkd.FreeMemory(pLogicalDevice->device, searchMemory, nullptr);
-        for (unsigned int i = 0; i < edgeFramebuffers.size(); i++)
+
+        for (uint32_t i = 0; i < edgeFramebuffers.size(); ++i)
         {
             pLogicalDevice->vkd.DestroyFramebuffer(pLogicalDevice->device, edgeFramebuffers[i], nullptr);
             pLogicalDevice->vkd.DestroyFramebuffer(pLogicalDevice->device, blendFramebuffers[i], nullptr);
@@ -362,6 +370,7 @@ namespace vkBasalt
             pLogicalDevice->vkd.DestroyImage(pLogicalDevice->device, edgeImages[i], nullptr);
             pLogicalDevice->vkd.DestroyImage(pLogicalDevice->device, blendImages[i], nullptr);
         }
+
         Logger::debug("after DestroyImageView");
         pLogicalDevice->vkd.DestroyImageView(pLogicalDevice->device, areaImageView, nullptr);
         pLogicalDevice->vkd.DestroyImage(pLogicalDevice->device, areaImage, nullptr);
@@ -370,4 +379,5 @@ namespace vkBasalt
 
         pLogicalDevice->vkd.DestroySampler(pLogicalDevice->device, sampler, nullptr);
     }
+
 } // namespace vkBasalt

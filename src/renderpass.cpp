@@ -1,11 +1,13 @@
 #include "renderpass.hpp"
+#include "logical_device.hpp"
 #include "vulkan_include.hpp"
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
     VkRenderPass createRenderPass(LogicalDevice* pLogicalDevice, VkFormat format)
     {
-        VkRenderPass renderPass;
+        VkRenderPass renderPass{};
 
         VkAttachmentDescription attachmentDescription;
         attachmentDescription.flags          = 0;
@@ -54,7 +56,7 @@ namespace vkBasalt
         renderPassCreateInfo.dependencyCount = 1;
         renderPassCreateInfo.pDependencies   = &subpassDependency;
 
-        VkResult result = pLogicalDevice->vkd.CreateRenderPass(pLogicalDevice->device, &renderPassCreateInfo, nullptr, &renderPass);
+        const auto result = pLogicalDevice->vkd.CreateRenderPass(pLogicalDevice->device, &renderPassCreateInfo, nullptr, &renderPass);
         AssertVulkan(result);
 
         return renderPass;

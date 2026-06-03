@@ -1,17 +1,21 @@
 #include "effect_cas.hpp"
+#include "logical_device.hpp"
+#include "config.hpp"
 #include "shader_sources.hpp"
+#include <vulkan/vulkan_core.h>
+#include <span>
 
 namespace vkBasalt
 {
-    CasEffect::CasEffect(LogicalDevice*       pLogicalDevice,
-                         VkFormat             format,
-                         VkExtent2D           imageExtent,
-                         std::vector<VkImage> inputImages,
-                         std::vector<VkImage> outputImages,
-                         Config*              pConfig)
+    CasEffect::CasEffect(LogicalDevice*           pLogicalDevice,
+                         VkFormat                 format,
+                         VkExtent2D               imageExtent,
+                         std::span<const VkImage> inputImages,
+                         std::span<const VkImage> outputImages,
+                         Config*                  pConfig)
     {
 
-        float sharpness = pConfig->getOption<float>("casSharpness", 0.4f);
+        const auto sharpness = pConfig->getOption<float>("casSharpness", 0.4F);
 
         vertexCode   = full_screen_triangle_vert;
         fragmentCode = cas_frag;
@@ -32,7 +36,7 @@ namespace vkBasalt
 
         init(pLogicalDevice, format, imageExtent, inputImages, outputImages, pConfig);
     }
-    CasEffect::~CasEffect()
-    {
-    }
+
+    CasEffect::~CasEffect() = default;
+
 } // namespace vkBasalt

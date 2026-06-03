@@ -5,8 +5,11 @@
 #include "config.hpp"
 #include "logical_device.hpp"
 
+#include <cstdint>
 #include <vector>
 #include <span>
+
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
@@ -44,12 +47,12 @@ namespace vkBasalt
         // subclasses can put DescriptorSets in here, but the first one will be the input image descriptorSet
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
 
-        void init(LogicalDevice*       pLogicalDevice,
-                  VkFormat             format,
-                  VkExtent2D           imageExtent,
-                  std::vector<VkImage> inputImages,
-                  std::vector<VkImage> outputImages,
-                  Config*              pConfig);
+        void init(LogicalDevice*           pLogicalDevice,
+                  VkFormat                 format,
+                  VkExtent2D               imageExtent,
+                  std::span<const VkImage> inputImages,
+                  std::span<const VkImage> outputImages,
+                  Config*                  pConfig);
     };
 } // namespace vkBasalt
 

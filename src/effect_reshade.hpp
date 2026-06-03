@@ -3,30 +3,32 @@
 
 #include "effect.hpp"
 #include "config.hpp"
+#include "effect_module.hpp"
 #include "reshade_uniforms.hpp"
 #include "logical_device.hpp"
 
+#include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <unordered_map>
 #include <memory>
+#include <span>
 
-#include <effect_parser.hpp>
-#include <effect_codegen.hpp>
-#include <effect_preprocessor.hpp>
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
     class ReshadeEffect final : public Effect
     {
     public:
-        ReshadeEffect(LogicalDevice*       pLogicalDevice,
-                      VkFormat             format,
-                      VkExtent2D           imageExtent,
-                      std::vector<VkImage> inputImages,
-                      std::vector<VkImage> outputImages,
-                      Config*              pConfig,
-                      std::string          effectName);
+        ReshadeEffect(LogicalDevice*           pLogicalDevice,
+                      VkFormat                 format,
+                      VkExtent2D               imageExtent,
+                      std::span<const VkImage> inputImages,
+                      std::span<const VkImage> outputImages,
+                      Config*                  pConfig,
+                      std::string_view         effectName);
         void applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
         void updateEffect() override;
         void useDepthImage(VkImageView depthImageView) override;

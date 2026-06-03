@@ -3,20 +3,23 @@
 
 #include "effect_simple.hpp"
 #include "config.hpp"
+#include "logical_device.hpp"
 
-#include <vector>
+#include <span>
+
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
     class CasEffect final : public SimpleEffect
     {
     public:
-        CasEffect(LogicalDevice*       pLogicalDevice,
-                  VkFormat             format,
-                  VkExtent2D           imageExtent,
-                  std::vector<VkImage> inputImages,
-                  std::vector<VkImage> outputImages,
-                  Config*              pConfig);
+        CasEffect(LogicalDevice*           pLogicalDevice,
+                  VkFormat                 format,
+                  VkExtent2D               imageExtent,
+                  std::span<const VkImage> inputImages,
+                  std::span<const VkImage> outputImages,
+                  Config*                  pConfig);
         ~CasEffect() override;
     };
 } // namespace vkBasalt

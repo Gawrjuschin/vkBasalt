@@ -2,13 +2,16 @@
 
 #include "logger.hpp"
 
+#include <X11/X.h>
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 
+#include <cstdint>
+#include <cstdlib>
 #include <memory>
 #include <functional>
 
-#include <unistd.h>
+#include <string>
 #include <cstring>
 
 namespace vkBasalt

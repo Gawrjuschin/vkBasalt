@@ -1,13 +1,17 @@
 #ifndef DESCRIPTOR_SET_HPP_INCLUDED
 #define DESCRIPTOR_SET_HPP_INCLUDED
 
+#include "logical_device.hpp"
+
+#include <cstdint>
+#include <span>
 #include <vector>
 
-#include "logical_device.hpp"
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
-    VkDescriptorPool createDescriptorPool(LogicalDevice* pLogicalDevice, const std::vector<VkDescriptorPoolSize>& poolSizes);
+    VkDescriptorPool createDescriptorPool(LogicalDevice* pLogicalDevice, std::span<const VkDescriptorPoolSize> poolSizes);
 
     VkDescriptorSetLayout createUniformBufferDescriptorSetLayout(LogicalDevice* pLogicalDevice);
 

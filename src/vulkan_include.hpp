@@ -1,10 +1,10 @@
 #ifndef VULKAN_INCLUDE_HPP_INCLUDED
 #define VULKAN_INCLUDE_HPP_INCLUDED
 
+#include <string>
 #define VK_NO_PROTOTYPES
 
 #include <vulkan/vulkan_core.h>
-#include <vulkan/vk_layer.h>
 
 #include <logger.hpp>
 

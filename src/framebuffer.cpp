@@ -1,5 +1,9 @@
 #include "framebuffer.hpp"
+#include "logical_device.hpp"
 #include "vulkan_include.hpp"
+#include <vector>
+#include <vulkan/vulkan_core.h>
+#include <cstdint>
 
 namespace vkBasalt
 {

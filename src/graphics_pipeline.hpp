@@ -3,12 +3,14 @@
 
 #include "logical_device.hpp"
 
-#include <vector>
+#include <span>
 #include <string>
+
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
-    VkPipelineLayout createGraphicsPipelineLayout(LogicalDevice* pLogicalDevice, std::vector<VkDescriptorSetLayout> descriptorSetLayouts);
+    VkPipelineLayout createGraphicsPipelineLayout(LogicalDevice* pLogicalDevice, std::span<VkDescriptorSetLayout> descriptorSetLayouts);
 
     VkPipeline createGraphicsPipeline(LogicalDevice*        pLogicalDevice,
                                       VkShaderModule        vertexModule,

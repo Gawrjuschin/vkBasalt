@@ -2,6 +2,7 @@
 #define RENDERPASS_HPP_INCLUDED
 
 #include "logical_device.hpp"
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {

@@ -4,6 +4,7 @@
 #include "logical_device.hpp"
 
 #include <effect_module.hpp>
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {

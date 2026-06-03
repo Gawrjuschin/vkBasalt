@@ -1,19 +1,25 @@
 #include "effect_transfer.hpp"
+#include "logical_device.hpp"
+#include "config.hpp"
+#include <cstdint>
+#include <iterator>
+#include <vulkan/vulkan_core.h>
+#include <span>
 
 namespace vkBasalt
 {
-    TransferEffect::TransferEffect(LogicalDevice*       pLogicalDevice,
-                                   VkFormat             format,
-                                   VkExtent2D           imageExtent,
-                                   std::vector<VkImage> inputImages,
-                                   std::vector<VkImage> outputImages,
-                                   Config*              pConfig)
+    TransferEffect::TransferEffect(LogicalDevice*           pLogicalDevice,
+                                   VkFormat                 format,
+                                   VkExtent2D               imageExtent,
+                                   std::span<const VkImage> inputImages,
+                                   std::span<const VkImage> outputImages,
+                                   Config*                  pConfig)
     {
         this->pLogicalDevice = pLogicalDevice;
         this->format         = format;
         this->imageExtent    = imageExtent;
-        this->inputImages    = inputImages;
-        this->outputImages   = outputImages;
+        this->inputImages.assign(std::cbegin(inputImages), std::cend(inputImages));
+        this->outputImages.assign(std::cbegin(outputImages), std::cend(outputImages));
         this->pConfig        = pConfig;
     }
 
@@ -81,8 +87,6 @@ namespace vkBasalt
             commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
     }
 
-    TransferEffect::~TransferEffect()
-    {
-    }
+    TransferEffect::~TransferEffect() = default;
 
 } // namespace vkBasalt

@@ -1,19 +1,26 @@
 #include "effect_dls.hpp"
+#include "logical_device.hpp"
+#include "config.hpp"
 #include "shader_sources.hpp"
+
+#include <array>
+#include <span>
+
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
-    DlsEffect::DlsEffect(LogicalDevice*       pLogicalDevice,
-                         VkFormat             format,
-                         VkExtent2D           imageExtent,
-                         std::vector<VkImage> inputImages,
-                         std::vector<VkImage> outputImages,
-                         Config*              pConfig)
+    DlsEffect::DlsEffect(LogicalDevice*           pLogicalDevice,
+                         VkFormat                 format,
+                         VkExtent2D               imageExtent,
+                         std::span<const VkImage> inputImages,
+                         std::span<const VkImage> outputImages,
+                         Config*                  pConfig)
     {
-        float sharpness = pConfig->getOption<float>("dlsSharpness", 0.5f);
-        float denoise   = pConfig->getOption<float>("dlsDenoise", 0.17f);
+        const auto sharpness = pConfig->getOption<float>("dlsSharpness", 0.5F);
+        const auto denoise   = pConfig->getOption<float>("dlsDenoise", 0.17F);
 
-        float specData[2] = {sharpness, denoise};
+        std::array specData{sharpness, denoise};
 
         vertexCode   = full_screen_triangle_vert;
         fragmentCode = dls_frag;
@@ -29,15 +36,15 @@ namespace vkBasalt
         VkSpecializationInfo fragmentSpecializationInfo;
         fragmentSpecializationInfo.mapEntryCount = 1;
         fragmentSpecializationInfo.pMapEntries   = mapEntries;
-        fragmentSpecializationInfo.dataSize      = sizeof(float) * 2;
-        fragmentSpecializationInfo.pData         = specData;
+        fragmentSpecializationInfo.dataSize      = std::span{specData}.size_bytes();
+        fragmentSpecializationInfo.pData         = std::data(specData);
 
         pVertexSpecInfo   = nullptr;
         pFragmentSpecInfo = &fragmentSpecializationInfo;
 
         init(pLogicalDevice, format, imageExtent, inputImages, outputImages, pConfig);
     }
-    DlsEffect::~DlsEffect()
-    {
-    }
+
+    DlsEffect::~DlsEffect() = default;
+
 } // namespace vkBasalt

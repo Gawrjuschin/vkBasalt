@@ -1,6 +1,8 @@
 #include "buffer.hpp"
+#include "logical_device.hpp"
 #include "memory.hpp"
 
+#include <vulkan/vulkan_core.h>
 #include <vulkan_include.hpp>
 
 namespace vkBasalt

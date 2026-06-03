@@ -1,5 +1,9 @@
 #include "shader.hpp"
+#include "logical_device.hpp"
 #include "vulkan_include.hpp"
+#include <span>
+#include <cstdint>
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
@@ -13,7 +17,7 @@ namespace vkBasalt
         shaderCreateInfo.codeSize = code.size_bytes();
         shaderCreateInfo.pCode    = code.data();
 
-        VkResult result = pLogicalDevice->vkd.CreateShaderModule(pLogicalDevice->device, &shaderCreateInfo, nullptr, shaderModule);
+        const auto result = pLogicalDevice->vkd.CreateShaderModule(pLogicalDevice->device, &shaderCreateInfo, nullptr, shaderModule);
         AssertVulkan(result);
     }
 } // namespace vkBasalt

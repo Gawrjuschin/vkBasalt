@@ -24,19 +24,19 @@ namespace vkBasalt
     {
     public:
         std::vector<unsigned char> colorCube;
-        int                        size;
+        int                        size{};
 
         LutCube(const std::string& file);
         LutCube();
 
     private:
-        float minX = 0.0f;
-        float minY = 0.0f;
-        float minZ = 0.0f;
+        float minX = 0.0F;
+        float minY = 0.0F;
+        float minZ = 0.0F;
 
-        float maxX = 1.0f;
-        float maxY = 1.0f;
-        float maxZ = 1.0f;
+        float maxX = 1.0F;
+        float maxY = 1.0F;
+        float maxZ = 1.0F;
 
         int currentX = 0;
         int currentY = 0;

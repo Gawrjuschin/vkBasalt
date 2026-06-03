@@ -1,6 +1,7 @@
+#include <cstdint>
 #include <keyboard_input.hpp>
+#include <string>
 
-#include "logger.hpp"
 
 // TODO build without X11
 #ifndef VKBASALT_X11
@@ -18,7 +19,7 @@ namespace vkBasalt
 #if VKBASALT_X11
         return convertToKeySymX11(key);
 #endif
-        return 0u;
+        return 0U;
     }
 
     bool isKeyPressed(uint32_t ks)

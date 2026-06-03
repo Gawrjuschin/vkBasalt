@@ -1,16 +1,25 @@
 #include "image_view.hpp"
+#include "logical_device.hpp"
 #include "vulkan_include.hpp"
+
+#include <algorithm>
+#include <cstdint>
+#include <iterator>
+#include <memory>
+#include <vector>
+#include <vulkan/vulkan_core.h>
+#include <span>
 
 namespace vkBasalt
 {
-    std::vector<VkImageView> createImageViews(LogicalDevice*       pLogicalDevice,
-                                              VkFormat             format,
-                                              std::vector<VkImage> images,
-                                              VkImageViewType      viewType,
-                                              VkImageAspectFlags   aspectMask,
-                                              uint32_t             mipLevels)
+    std::vector<VkImageView> createImageViews(LogicalDevice*           pLogicalDevice,
+                                              VkFormat                 format,
+                                              std::span<const VkImage> images,
+                                              VkImageViewType          viewType,
+                                              VkImageAspectFlags       aspectMask,
+                                              uint32_t                 mipLevels)
     {
-        std::vector<VkImageView> imageViews(images.size());
+        std::vector<VkImageView> imageViews(std::size(images));
 
         VkImageViewCreateInfo imageViewCreateInfo;
 
@@ -31,12 +40,13 @@ namespace vkBasalt
         imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
         imageViewCreateInfo.subresourceRange.layerCount     = 1;
 
-        for (uint32_t i = 0; i < images.size(); i++)
-        {
-            imageViewCreateInfo.image = images[i];
-            VkResult result           = pLogicalDevice->vkd.CreateImageView(pLogicalDevice->device, &imageViewCreateInfo, nullptr, &(imageViews[i]));
+        std::ranges::transform(images, std::begin(imageViews), [pLogicalDevice, &imageViewCreateInfo](const VkImage& image) -> VkImageView {
+            VkImageView imageView{};
+            imageViewCreateInfo.image = image;
+            VkResult result = pLogicalDevice->vkd.CreateImageView(pLogicalDevice->device, &imageViewCreateInfo, nullptr, std::addressof(imageView));
             AssertVulkan(result);
-        }
+            return imageView;
+        });
 
         return imageViews;
     }

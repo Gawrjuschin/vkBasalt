@@ -5,6 +5,8 @@
 
 #include <vector>
 
+#include <vulkan/vulkan_core.h>
+
 namespace vkBasalt
 {
     // Returns a matching sRGB format to a UNORM format if it exist, else returns format

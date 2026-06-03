@@ -1,10 +1,14 @@
 #include "image.hpp"
+#include "logical_device.hpp"
 #include "memory.hpp"
 #include "buffer.hpp"
 #include "format.hpp"
 #include "vulkan_include.hpp"
 
+#include <cstdint>
 #include <cstring>
+#include <vector>
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
@@ -54,10 +58,9 @@ namespace vkBasalt
         imageCreateInfo.pQueueFamilyIndices   = nullptr; // Don't care
         imageCreateInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        VkResult result;
         for (uint32_t i = 0; i < count; i++)
         {
-            result = pLogicalDevice->vkd.CreateImage(pLogicalDevice->device, &imageCreateInfo, nullptr, &(images[i]));
+            const auto result = pLogicalDevice->vkd.CreateImage(pLogicalDevice->device, &imageCreateInfo, nullptr, &(images[i]));
             AssertVulkan(result);
         }
         // Allocate a bunch of memory for all images at one
@@ -75,12 +78,12 @@ namespace vkBasalt
         memoryAllocateInfo.allocationSize  = memoryRequirements.size * count;
         memoryAllocateInfo.memoryTypeIndex = findMemoryTypeIndex(pLogicalDevice, memoryRequirements.memoryTypeBits, properties);
 
-        result = pLogicalDevice->vkd.AllocateMemory(pLogicalDevice->device, &memoryAllocateInfo, nullptr, &imageMemory);
+        const auto result = pLogicalDevice->vkd.AllocateMemory(pLogicalDevice->device, &memoryAllocateInfo, nullptr, &imageMemory);
         AssertVulkan(result);
 
         for (uint32_t i = 0; i < count; i++)
         {
-            result = pLogicalDevice->vkd.BindImageMemory(pLogicalDevice->device, images[i], imageMemory, memoryRequirements.size * i);
+            const auto result = pLogicalDevice->vkd.BindImageMemory(pLogicalDevice->device, images[i], imageMemory, memoryRequirements.size * i);
             AssertVulkan(result);
         }
         return images;

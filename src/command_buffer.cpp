@@ -1,8 +1,17 @@
 #include "command_buffer.hpp"
 
+#include "effect.hpp"
 #include "format.hpp"
+#include "logical_device.hpp"
+#include "logger.hpp"
 #include "util.hpp"
 
+#include <cstdint>
+#include <memory>
+
+#include <vector>
+#include <span>
+#include <vulkan/vulkan_core.h>
 #include <vulkan_include.hpp>
 
 namespace vkBasalt
@@ -18,7 +27,7 @@ namespace vkBasalt
         allocInfo.commandPool        = pLogicalDevice->commandPool;
         allocInfo.commandBufferCount = count;
 
-        VkResult result = pLogicalDevice->vkd.AllocateCommandBuffers(pLogicalDevice->device, &allocInfo, commandBuffers.data());
+        VkResult const result = pLogicalDevice->vkd.AllocateCommandBuffers(pLogicalDevice->device, &allocInfo, commandBuffers.data());
         AssertVulkan(result);
         for (uint32_t i = 0; i < count; i++)
         {
@@ -28,12 +37,12 @@ namespace vkBasalt
 
         return commandBuffers;
     }
-    void writeCommandBuffers(LogicalDevice*                                 pLogicalDevice,
-                             std::vector<std::shared_ptr<vkBasalt::Effect>> effects,
-                             VkImage                                        depthImage,
-                             VkImageView                                    depthImageView,
-                             VkFormat                                       depthFormat,
-                             std::vector<VkCommandBuffer>                   commandBuffers)
+    void writeCommandBuffers(LogicalDevice*                               pLogicalDevice,
+                             std::span<std::unique_ptr<vkBasalt::Effect>> effects,
+                             VkImage                                      depthImage,
+                             VkImageView                                  depthImageView,
+                             VkFormat                                     depthFormat,
+                             std::span<VkCommandBuffer>                   commandBuffers)
     {
         VkCommandBufferBeginInfo beginInfo = {};
 
@@ -70,7 +79,7 @@ namespace vkBasalt
             memoryBarrier.subresourceRange.baseArrayLayer = 0;
             memoryBarrier.subresourceRange.layerCount     = 1;
 
-            if (depthImageView)
+            if (depthImageView != nullptr)
             {
                 pLogicalDevice->vkd.CmdPipelineBarrier(commandBuffers[i],
                                                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -84,16 +93,16 @@ namespace vkBasalt
                                                        &memoryBarrier);
             }
 
-            for (uint32_t j = 0; j < effects.size(); j++)
+            for (auto& effect : effects)
             {
-                Logger::debug("before applying effect " + convertToString(effects[j]));
-                effects[j]->applyEffect(i, commandBuffers[i]);
+                Logger::debug("before applying effect " + convertToString(effect));
+                effect->applyEffect(i, commandBuffers[i]);
             }
 
             memoryBarrier.oldLayout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             memoryBarrier.newLayout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             memoryBarrier.dstAccessMask = 0;
-            if (depthImageView)
+            if (depthImageView != nullptr)
             {
                 pLogicalDevice->vkd.CmdPipelineBarrier(commandBuffers[i],
                                                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,

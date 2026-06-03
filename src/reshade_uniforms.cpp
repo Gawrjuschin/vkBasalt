@@ -1,10 +1,18 @@
 #include "reshade_uniforms.hpp"
+#include "effect_module.hpp"
 
+#include <chrono>
+#include <cstdint>
 #include <cstring>
 #include <ctime>
 #include <cstdlib>
 #include <cmath>
 #include <algorithm>
+
+#include <string>
+#include <vector>
+#include <memory>
+#include <ratio>
 
 #include <vulkan/vulkan_core.h>
 
@@ -16,9 +24,7 @@ namespace vkBasalt
     {
         for (auto& uniform : module.uniforms)
         {
-            auto source = std::find_if(uniform.annotations.begin(), uniform.annotations.end(), [](const auto& a) {
-                              return a.name == "source";
-                          })->value.string_data;
+            auto source = std::ranges::find(uniform.annotations, "source", &reshadefx::annotation::name)->value.string_data;
             Logger::debug(source);
             Logger::debug("size: " + std::to_string(uniform.size));
             Logger::debug("offset: " + std::to_string(uniform.offset));
@@ -30,9 +36,7 @@ namespace vkBasalt
         std::vector<std::shared_ptr<ReshadeUniform>> uniforms;
         for (auto& uniform : module.uniforms)
         {
-            auto source = std::find_if(uniform.annotations.begin(), uniform.annotations.end(), [](const auto& a) {
-                              return a.name == "source";
-                          })->value.string_data;
+            auto source = std::ranges::find(uniform.annotations, "source", &reshadefx::annotation::name)->value.string_data;
             if (source == "frametime")
             {
                 uniforms.push_back(std::shared_ptr<ReshadeUniform>(new FrameTimeUniform(uniform)));
@@ -84,8 +88,8 @@ namespace vkBasalt
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     FrameTimeUniform::FrameTimeUniform(reshadefx::uniform_info uniformInfo)
     {
-        auto source = std::find_if(uniformInfo.annotations.begin(), uniformInfo.annotations.end(), [](const auto& a) { return a.name == "source"; });
-        if (source->value.string_data != "frametime")
+        if (auto source = std::ranges::find(uniformInfo.annotations, "source", &reshadefx::annotation::name);
+            source->value.string_data != "frametime")
         {
             Logger::err("Tried to create a FrameTimeUniform from a non frametime uniform_info");
         }
@@ -99,7 +103,7 @@ namespace vkBasalt
         std::chrono::duration<float, std::milli> duration     = currentFrame - lastFrame;
         lastFrame                                             = currentFrame;
         float frametime                                       = duration.count();
-        std::memcpy((uint8_t*) mapedBuffer + offset, &(frametime), sizeof(float));
+        std::memcpy((uint8_t*) mapedBuffer + offset, std::addressof(frametime), sizeof(float));
     }
     FrameTimeUniform::~FrameTimeUniform()
     {
@@ -141,8 +145,8 @@ namespace vkBasalt
         auto        now         = std::chrono::system_clock::now();
         std::time_t nowC        = std::chrono::system_clock::to_time_t(now);
         struct tm*  currentTime = std::localtime(&nowC);
-        float       year        = 1900.0f + static_cast<float>(currentTime->tm_year);
-        float       month       = 1.0f + static_cast<float>(currentTime->tm_mon);
+        float       year        = 1900.0F + static_cast<float>(currentTime->tm_year);
+        float       month       = 1.0F + static_cast<float>(currentTime->tm_mon);
         float       day         = static_cast<float>(currentTime->tm_mday);
         float       seconds     = static_cast<float>((currentTime->tm_hour * 60 + currentTime->tm_min) * 60 + currentTime->tm_sec);
         float       date[]      = {year, month, day, seconds};
@@ -223,25 +227,25 @@ namespace vkBasalt
 
         std::chrono::duration<float, std::ratio<1>> frameTime = currentFrame - lastFrame;
 
-        float increment = stepMax == 0 ? stepMin : (stepMin + std::fmod(static_cast<float>(std::rand()), stepMax - stepMin + 1.0f));
+        float increment = stepMax == 0 ? stepMin : (stepMin + std::fmod(static_cast<float>(std::rand()), stepMax - stepMin + 1.0F));
         if (currentValue[1] >= 0)
         {
-            increment = std::max(increment - std::max(0.0f, smoothing - (max - currentValue[0])), 0.05f);
+            increment = std::max(increment - std::max(0.0F, smoothing - (max - currentValue[0])), 0.05F);
             increment *= frameTime.count();
 
             if ((currentValue[0] += increment) >= max)
             {
-                currentValue[0] = max, currentValue[1] = -1.0f;
+                currentValue[0] = max, currentValue[1] = -1.0F;
             }
         }
         else
         {
-            increment = std::max(increment - std::max(0.0f, smoothing - (currentValue[0] - min)), 0.05f);
+            increment = std::max(increment - std::max(0.0F, smoothing - (currentValue[0] - min)), 0.05F);
             increment *= frameTime.count();
 
             if ((currentValue[0] -= increment) <= min)
             {
-                currentValue[0] = min, currentValue[1] = 1.0f;
+                currentValue[0] = min, currentValue[1] = 1.0F;
             }
         }
         std::memcpy((uint8_t*) mapedBuffer + offset, currentValue, sizeof(float) * 2);
@@ -335,7 +339,7 @@ namespace vkBasalt
     }
     void MousePointUniform::update(void* mapedBuffer)
     {
-        float point[2] = {0.0f, 0.0f}; // TODO
+        float point[2] = {0.0F, 0.0F}; // TODO
         std::memcpy((uint8_t*) mapedBuffer + offset, point, sizeof(float) * 2);
     }
     MousePointUniform::~MousePointUniform()
@@ -355,7 +359,7 @@ namespace vkBasalt
     }
     void MouseDeltaUniform::update(void* mapedBuffer)
     {
-        float delta[2] = {0.0f, 0.0f}; // TODO
+        float delta[2] = {0.0F, 0.0F}; // TODO
         std::memcpy((uint8_t*) mapedBuffer + offset, delta, sizeof(float) * 2);
     }
     MouseDeltaUniform::~MouseDeltaUniform()

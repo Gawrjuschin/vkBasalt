@@ -1,14 +1,16 @@
 #include "lut_cube.hpp"
 
+#include <cstddef>
 #include <fstream>
 
 #include <logger.hpp>
+#include <string>
+#include <vector>
 
 namespace vkBasalt
 {
-    LutCube::LutCube()
-    {
-    }
+    LutCube::LutCube() = default;
+
     LutCube::LutCube(const std::string& file)
     {
         std::ifstream cubeStream(file);
@@ -34,7 +36,7 @@ namespace vkBasalt
         {
             return;
         }
-        if (line.find("LUT_3D_SIZE") != std::string::npos)
+        if (line.contains("LUT_3D_SIZE"))
         {
             line = line.substr(line.find("LUT_3D_SIZE") + 11);
             line = skipWhiteSpace(line);
@@ -43,13 +45,13 @@ namespace vkBasalt
             colorCube = std::vector<unsigned char>(size * size * size * 4, 255);
             return;
         }
-        if (line.find("DOMAIN_MIN") != std::string::npos)
+        if (line.contains("DOMAIN_MIN"))
         {
             line = line.substr(line.find("DOMAIN_MIN") + 10);
             splitTripel(line, minX, minY, minZ);
             return;
         }
-        if (line.find("DOMAIN_MAX") != std::string::npos)
+        if (line.contains("DOMAIN_MAX"))
         {
             line = line.substr(line.find("DOMAIN_MAX") + 10);
             splitTripel(line, maxX, maxY, maxZ);

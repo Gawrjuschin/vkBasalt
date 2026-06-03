@@ -1,6 +1,8 @@
 #include "effect_simple.hpp"
+#include "config.hpp"
 #include "image_view.hpp"
 #include "descriptor_set.hpp"
+#include "logical_device.hpp"
 #include "renderpass.hpp"
 #include "graphics_pipeline.hpp"
 #include "framebuffer.hpp"
@@ -8,27 +10,33 @@
 #include "sampler.hpp"
 #include "util.hpp"
 
+#include <cstdint>
+#include <iterator>
+#include <memory>
+#include <span>
+
 #include <logger.hpp>
+#include <vulkan/vulkan_core.h>
+#include <vector>
 
 namespace vkBasalt
 {
-    SimpleEffect::SimpleEffect()
-    {
-    }
-    void SimpleEffect::init(LogicalDevice*       pLogicalDevice,
-                            VkFormat             format,
-                            VkExtent2D           imageExtent,
-                            std::vector<VkImage> inputImages,
-                            std::vector<VkImage> outputImages,
-                            Config*              pConfig)
+    SimpleEffect::SimpleEffect() = default;
+
+    void SimpleEffect::init(LogicalDevice*           pLogicalDevice,
+                            VkFormat                 format,
+                            VkExtent2D               imageExtent,
+                            std::span<const VkImage> inputImages,
+                            std::span<const VkImage> outputImages,
+                            Config*                  pConfig)
     {
         Logger::debug("in creating SimpleEffect");
 
         this->pLogicalDevice = pLogicalDevice;
         this->format         = format;
         this->imageExtent    = imageExtent;
-        this->inputImages    = inputImages;
-        this->outputImages   = outputImages;
+        this->inputImages.assign(std::cbegin(inputImages), std::cend(inputImages));
+        this->outputImages.assign(std::cbegin(outputImages), std::cend(outputImages));
         this->pConfig        = pConfig;
 
         inputImageViews = createImageViews(pLogicalDevice, format, inputImages);
@@ -43,11 +51,9 @@ namespace vkBasalt
 
         VkDescriptorPoolSize imagePoolSize;
         imagePoolSize.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        imagePoolSize.descriptorCount = inputImages.size() + 10;
+        imagePoolSize.descriptorCount = std::size(inputImages) + 10;
 
-        std::vector<VkDescriptorPoolSize> poolSizes = {imagePoolSize};
-
-        descriptorPool = createDescriptorPool(pLogicalDevice, poolSizes);
+        descriptorPool = createDescriptorPool(pLogicalDevice, std::span{std::addressof(imagePoolSize), 1U});
         Logger::debug("created descriptorPool");
 
         createShaderModule(pLogicalDevice, vertexCode, &vertexModule);
@@ -74,6 +80,7 @@ namespace vkBasalt
 
         framebuffers = createFramebuffers(pLogicalDevice, renderPass, imageExtent, {outputImageViews});
     }
+
     void SimpleEffect::applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer)
     {
         Logger::debug("applying SimpleEffect to cb " + convertToString(commandBuffer));
@@ -113,8 +120,16 @@ namespace vkBasalt
         secondBarrier.subresourceRange.baseArrayLayer = 0;
         secondBarrier.subresourceRange.layerCount     = 1;
 
-        pLogicalDevice->vkd.CmdPipelineBarrier(
-            commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
+        pLogicalDevice->vkd.CmdPipelineBarrier(commandBuffer,
+                                               VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                               VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                               0,
+                                               0,
+                                               nullptr,
+                                               0,
+                                               nullptr,
+                                               1,
+                                               std::addressof(memoryBarrier));
         Logger::debug("after the first pipeline barrier");
 
         VkRenderPassBeginInfo renderPassBeginInfo;
@@ -124,9 +139,9 @@ namespace vkBasalt
         renderPassBeginInfo.framebuffer       = framebuffers[imageIndex];
         renderPassBeginInfo.renderArea.offset = {0, 0};
         renderPassBeginInfo.renderArea.extent = imageExtent;
-        VkClearValue clearValue               = {0.0f, 0.0f, 0.0f, 1.0f};
+        VkClearValue clearValue               = {{{0.0F, 0.0F, 0.0F, 1.0F}}};
         renderPassBeginInfo.clearValueCount   = 1;
-        renderPassBeginInfo.pClearValues      = &clearValue;
+        renderPassBeginInfo.pClearValues      = std::addressof(clearValue);
 
         Logger::debug("before beginn renderpass");
         pLogicalDevice->vkd.CmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -157,6 +172,7 @@ namespace vkBasalt
                                                &secondBarrier);
         Logger::debug("after the second pipeline barrier");
     }
+
     SimpleEffect::~SimpleEffect()
     {
         Logger::debug("destroying SimpleEffect " + convertToString(this));
@@ -177,4 +193,5 @@ namespace vkBasalt
         Logger::debug("after DestroyImageView");
         pLogicalDevice->vkd.DestroySampler(pLogicalDevice->device, sampler, nullptr);
     }
+
 } // namespace vkBasalt
