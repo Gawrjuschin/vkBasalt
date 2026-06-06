@@ -532,43 +532,22 @@ namespace vkBasalt
 
             auto effectStrings = state.config.getOption<std::vector<std::string>>("effects", {"cas"});
 
-            // create 1 more set of images when we can't use the swapchain it self
-            const auto fakeImageCount = logicalSwapchain.imageCount * (std::size(effectStrings) + (!logicalDevice.supportsMutableFormat ? 1U : 0U));
-
-            logicalSwapchain.fakeImages = createFakeSwapchainImages(
-                std::addressof(logicalDevice), logicalSwapchain.swapchainCreateInfo, fakeImageCount, logicalSwapchain.fakeImageMemory);
-            Logger::debug("created fake swapchain images");
-
             const auto unormFormat = convertToUNORM(logicalSwapchain.format);
             const auto srgbFormat  = convertToSRGB(logicalSwapchain.format);
 
-            logicalSwapchain.fakeImages | std::views::chunk(logicalSwapchain.imageCount);
+            const auto fakeImages = createFakeSwapchainImages(logicalDevice, logicalSwapchain, std::size(effectStrings));
+            Logger::debug("created fake swapchain images");
 
-            for (uint32_t i = 0; i < std::size(effectStrings); ++i)
+            const auto fakeImagesChunks   = fakeImages | std::views::chunk(logicalSwapchain.imageCount);
+            const auto firstImagesChunks  = fakeImagesChunks | std::views::take(std::size(effectStrings));
+            const auto secondImagesChunks = fakeImagesChunks | std::views::drop(1u);
+
+            for (auto [effect, firstImages, secondImages] : std::views::zip(effectStrings, firstImagesChunks, secondImagesChunks))
             {
-                Logger::debug("current effectString " + effectStrings[i]);
-                std::vector<VkImage> firstImages(std::next(std::begin(logicalSwapchain.fakeImages), logicalSwapchain.imageCount * i),
-                                                 std::next(std::begin(logicalSwapchain.fakeImages), logicalSwapchain.imageCount * (i + 1)));
-                Logger::debug(std::to_string(std::size(firstImages)) + " images in firstImages");
-                std::vector<VkImage> secondImages;
-                // for last element of effectStrings
-                if (std::size(effectStrings) == i + 1U)
-                {
-                    logicalDevice.supportsMutableFormat
-                        ? secondImages.assign(std::cbegin(logicalSwapchain.images), std::cend(logicalSwapchain.images))
-                        : secondImages.assign(std::prev(std::cend(logicalSwapchain.fakeImages), logicalSwapchain.imageCount),
-                                              std::cend(logicalSwapchain.fakeImages));
-                    Logger::debug("using swapchain images as second images");
-                }
-                else
-                {
-                    secondImages.assign(std::next(std::begin(logicalSwapchain.fakeImages), logicalSwapchain.imageCount * (i + 1)),
-                                        std::next(std::begin(logicalSwapchain.fakeImages), logicalSwapchain.imageCount * (i + 2)));
-                    Logger::debug("not using swapchain images as second images");
-                }
-                Logger::debug(std::to_string(std::size(secondImages)) + " images in secondImages");
+                Logger::debug("current effectString " + effect);
+
                 // TODO: in separate function
-                if (effectStrings[i] == "fxaa")
+                if (effect == "fxaa")
                 {
                     logicalSwapchain.effects.emplace_back(std::make_unique<FxaaEffect>(std::addressof(logicalDevice),
                                                                                        srgbFormat,
@@ -578,7 +557,7 @@ namespace vkBasalt
                                                                                        std::addressof(state.config)));
                     Logger::debug("created FxaaEffect");
                 }
-                else if (effectStrings[i] == "cas")
+                else if (effect == "cas")
                 {
                     logicalSwapchain.effects.emplace_back(std::make_unique<CasEffect>(std::addressof(logicalDevice),
                                                                                       unormFormat,
@@ -588,7 +567,7 @@ namespace vkBasalt
                                                                                       std::addressof(state.config)));
                     Logger::debug("created CasEffect");
                 }
-                else if (effectStrings[i] == "deband")
+                else if (effect == "deband")
                 {
                     logicalSwapchain.effects.emplace_back(std::make_unique<DebandEffect>(std::addressof(logicalDevice),
                                                                                          unormFormat,
@@ -598,7 +577,7 @@ namespace vkBasalt
                                                                                          std::addressof(state.config)));
                     Logger::debug("created DebandEffect");
                 }
-                else if (effectStrings[i] == "smaa")
+                else if (effect == "smaa")
                 {
                     logicalSwapchain.effects.emplace_back(std::make_unique<SmaaEffect>(std::addressof(logicalDevice),
                                                                                        unormFormat,
@@ -608,7 +587,7 @@ namespace vkBasalt
                                                                                        std::addressof(state.config)));
                     Logger::debug("created SmaaEffect");
                 }
-                else if (effectStrings[i] == "lut")
+                else if (effect == "lut")
                 {
                     logicalSwapchain.effects.emplace_back(std::make_unique<LutEffect>(std::addressof(logicalDevice),
                                                                                       unormFormat,
@@ -618,7 +597,7 @@ namespace vkBasalt
                                                                                       std::addressof(state.config)));
                     Logger::debug("created LutEffect");
                 }
-                else if (effectStrings[i] == "dls")
+                else if (effect == "dls")
                 {
                     logicalSwapchain.effects.emplace_back(std::make_unique<DlsEffect>(std::addressof(logicalDevice),
                                                                                       unormFormat,
@@ -636,7 +615,7 @@ namespace vkBasalt
                                                                                           firstImages,
                                                                                           secondImages,
                                                                                           std::addressof(state.config),
-                                                                                          effectStrings[i]));
+                                                                                          effect));
                     Logger::debug("created ReshadeEffect");
                 }
             }
