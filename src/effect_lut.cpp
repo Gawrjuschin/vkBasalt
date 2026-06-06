@@ -8,15 +8,20 @@
 #include "image.hpp"
 #include "shader_sources.hpp"
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <span>
+#include <string>
+#include <ranges>
+#include <vector>
+
 #include <stb_image.h>
 
-#include <logger.hpp>
 #include <vulkan/vulkan_core.h>
-#include <string>
-#include <vector>
+
+#include <logger.hpp>
 
 namespace vkBasalt
 {
@@ -36,7 +41,7 @@ namespace vkBasalt
         LutCube  lutCube{};
         stbi_uc* pixels{};
         const auto usingPNG = static_cast<int32_t>(not lutFile.contains(".cube") && not lutFile.contains(".CUBE"));
-        if (!usingPNG)
+        if (usingPNG == 0)
         {
             lutCube = LutCube{lutFile};
             pixels  = std::data(lutCube.colorCube);
@@ -44,21 +49,26 @@ namespace vkBasalt
         }
         else
         {
-            int channels, width;
-            pixels = stbi_load(lutFile.c_str(), &width, std::addressof(height), std::addressof(channels), STBI_rgb_alpha);
+            int channels{};
+            int width{};
+            pixels = stbi_load(lutFile.c_str(), std::addressof(width), std::addressof(height), std::addressof(channels), STBI_rgb_alpha);
             if (width != height * height)
             {
                 Logger::err("bad lut");
             }
         }
 
-        std::array<VkSpecializationMapEntry, 2U> specMapEntrys{};
-        for (uint32_t i = 0; i < std::size(specMapEntrys); i++)
-        {
-            specMapEntrys[i].constantID = i;
-            specMapEntrys[i].offset     = sizeof(int32_t) * i;
-            specMapEntrys[i].size       = sizeof(int32_t);
-        }
+        constexpr static auto specMapEntrys{[] {
+            constexpr static std::size_t               size{2};
+            std::array<VkSpecializationMapEntry, size> specMapEntrys{}; // constexpr function
+            for (auto [i, entry] : std::views::enumerate(specMapEntrys))
+            {
+                entry.constantID = i;
+                entry.offset     = sizeof(int32_t) * i;
+                entry.size       = sizeof(int32_t);
+            }
+            return specMapEntrys;
+        }()};
 
         std::array specData = {height, usingPNG};
 
@@ -71,7 +81,8 @@ namespace vkBasalt
         pVertexSpecInfo   = nullptr;
         pFragmentSpecInfo = &fragmentSpecializationInfo;
 
-        const VkExtent3D lutImageExtent{.width = (uint32_t) height, .height = (uint32_t) height, .depth = (uint32_t) height};
+        const VkExtent3D lutImageExtent{
+            .width = static_cast<uint32_t>(height), .height = static_cast<uint32_t>(height), .depth = static_cast<uint32_t>(height)};
 
         lutImage = createImages(pLogicalDevice,
                                 1,
@@ -83,7 +94,7 @@ namespace vkBasalt
 
         uploadToImage(pLogicalDevice, lutImage, lutImageExtent, height * height * height * 4, pixels);
 
-        if (usingPNG)
+        if (usingPNG != 0)
         {
             stbi_image_free(pixels);
         }

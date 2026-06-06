@@ -14,6 +14,12 @@ namespace vkBasalt
         void virtual updateEffect(){};
         void virtual useDepthImage(VkImageView /*depthImageView*/){};
 
+        Effect()                         = default;
+        Effect(const Effect&)            = delete;
+        Effect& operator=(const Effect&) = delete;
+        Effect(Effect&&)                 = delete;
+        Effect& operator=(Effect&&)      = delete;
+
         virtual ~Effect() = default;
 
     private:

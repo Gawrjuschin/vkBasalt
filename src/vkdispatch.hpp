@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VKBASALT_VKDISPACTCH_HPP
+#define VKBASALT_VKDISPACTCH_HPP
 
 #include "vkfuncs.hpp"
 
@@ -27,3 +28,5 @@ namespace vkBasalt
 #undef FORVKFUNC
 #undef VK_INSTANCE_FUNCS
 #undef VK_DEVICE_FUNCS
+
+#endif // VKBASALT_VKDISPACTCH_HPP

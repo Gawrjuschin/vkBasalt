@@ -1,6 +1,7 @@
 #include "framebuffer.hpp"
 #include "logical_device.hpp"
 #include "vulkan_include.hpp"
+#include <memory>
 #include <vector>
 #include <vulkan/vulkan_core.h>
 #include <cstdint>
@@ -30,7 +31,8 @@ namespace vkBasalt
             framebufferCreateInfo.height          = extent.height;
             framebufferCreateInfo.layers          = 1;
 
-            VkResult result = pLogicalDevice->vkd.CreateFramebuffer(pLogicalDevice->device, &framebufferCreateInfo, nullptr, &(framebuffers[i]));
+            const auto result = pLogicalDevice->vkd.CreateFramebuffer(
+                pLogicalDevice->device, std::addressof(framebufferCreateInfo), nullptr, std::addressof(framebuffers[i]));
             AssertVulkan(result);
             perFrameImageViews.clear();
         }

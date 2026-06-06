@@ -2,13 +2,11 @@
 #define UTIL_HPP_INCLUDED
 
 #include <string>
+#include <string_view>
 #include <sstream>
-#include <vector>
 
 namespace vkBasalt
 {
-    void addUniqueCString(std::vector<const char*>& stringVector, const char* addString);
-
     enum class Color
     {
         defaultColor,

@@ -20,6 +20,12 @@ namespace vkBasalt
                   std::span<const VkImage> inputImages,
                   std::span<const VkImage> outputImages,
                   Config*                  pConfig);
+
+        CasEffect(const CasEffect&)            = delete;
+        CasEffect& operator=(const CasEffect&) = delete;
+        CasEffect(CasEffect&&)                 = delete;
+        CasEffect& operator=(CasEffect&&)      = delete;
+
         ~CasEffect() override;
     };
 } // namespace vkBasalt

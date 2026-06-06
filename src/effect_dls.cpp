@@ -4,6 +4,7 @@
 #include "shader_sources.hpp"
 
 #include <array>
+#include <memory>
 #include <span>
 
 #include <vulkan/vulkan_core.h>
@@ -25,22 +26,17 @@ namespace vkBasalt
         vertexCode   = full_screen_triangle_vert;
         fragmentCode = dls_frag;
 
-        VkSpecializationMapEntry mapEntries[2];
-        mapEntries[0].constantID = 0;
-        mapEntries[0].offset     = 0;
-        mapEntries[0].size       = sizeof(float);
-        mapEntries[1].constantID = 1;
-        mapEntries[1].offset     = sizeof(float);
-        mapEntries[1].size       = sizeof(float);
+        constexpr static std::array mapEntries{VkSpecializationMapEntry{.constantID = 0, .offset = 0, .size = sizeof(float)},
+                                               VkSpecializationMapEntry{.constantID = 1, .offset = sizeof(float), .size = sizeof(float)}};
 
         VkSpecializationInfo fragmentSpecializationInfo;
-        fragmentSpecializationInfo.mapEntryCount = 1;
-        fragmentSpecializationInfo.pMapEntries   = mapEntries;
+        fragmentSpecializationInfo.mapEntryCount = 1; // TODO: why 1 and not std::size(mapEntries)?
+        fragmentSpecializationInfo.pMapEntries   = std::data(mapEntries);
         fragmentSpecializationInfo.dataSize      = std::span{specData}.size_bytes();
         fragmentSpecializationInfo.pData         = std::data(specData);
 
         pVertexSpecInfo   = nullptr;
-        pFragmentSpecInfo = &fragmentSpecializationInfo;
+        pFragmentSpecInfo = std::addressof(fragmentSpecializationInfo);
 
         init(pLogicalDevice, format, imageExtent, inputImages, outputImages, pConfig);
     }

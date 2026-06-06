@@ -17,11 +17,16 @@ namespace vkBasalt
     {
     public:
         SimpleEffect();
-        void applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
+        SimpleEffect(const SimpleEffect&)            = delete;
+        SimpleEffect& operator=(const SimpleEffect&) = delete;
+        SimpleEffect(SimpleEffect&&)                 = delete;
+        SimpleEffect& operator=(SimpleEffect&&)      = delete;
         ~SimpleEffect() override;
 
+        void applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
+
     protected:
-        LogicalDevice*               pLogicalDevice;
+        LogicalDevice*               pLogicalDevice{};
         std::vector<VkImage>         inputImages;
         std::vector<VkImage>         outputImages;
         std::vector<VkImageView>     inputImageViews;

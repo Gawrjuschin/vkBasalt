@@ -23,6 +23,7 @@ namespace vkBasalt
                        std::span<const VkImage> outputImages,
                        Config*                  pConfig);
         void applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
+
         ~TransferEffect() override;
 
     private:

@@ -49,18 +49,18 @@ namespace vkBasalt
                            std::span<const VkImage> outputImages,
                            Config*                  pConfig) :
         pLogicalDevice{pLogicalDevice}, inputImages(std::cbegin(inputImages), std::cend(inputImages)),
-        outputImages(std::cbegin(outputImages), std::cend(outputImages)), imageExtent{imageExtent}, format{format}, pConfig{pConfig}
+        outputImages(std::cbegin(outputImages), std::cend(outputImages)), imageExtent{imageExtent}, format{format}, sampler(createSampler(pLogicalDevice)), pConfig{pConfig}
     {
         Logger::debug("in creating SmaaEffect");
 
         // create Images for the first and second pass at once -> less memory fragmentation
-        std::vector<VkImage> edgeAndBlendImages = createImages(pLogicalDevice,
-                                                               inputImages.size() * 2,
-                                                               {imageExtent.width, imageExtent.height, 1},
-                                                               VK_FORMAT_B8G8R8A8_UNORM, // TODO search for format and save it
-                                                               VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                                                               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                                               imageMemory);
+        const auto edgeAndBlendImages = createImages(pLogicalDevice,
+                                                     std::size(inputImages) * 2,
+                                                     {.width = imageExtent.width, .height = imageExtent.height, .depth = 1},
+                                                     VK_FORMAT_B8G8R8A8_UNORM, // TODO search for format and save it
+                                                     VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                                                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                                     imageMemory);
 
         edgeImages.assign(std::cbegin(edgeAndBlendImages), std::next(std::cbegin(edgeAndBlendImages), std::size(edgeAndBlendImages) / 2));
         blendImages.assign(std::next(std::cbegin(edgeAndBlendImages), std::size(edgeAndBlendImages) / 2), std::cend(edgeAndBlendImages));
@@ -73,10 +73,10 @@ namespace vkBasalt
         Logger::debug("created blend ImageViews");
         outputImageViews = createImageViews(pLogicalDevice, format, outputImages);
         Logger::debug("created output ImageViews");
-        sampler = createSampler(pLogicalDevice);
+        
         Logger::debug("created sampler");
 
-        VkExtent3D areaImageExtent = {AREATEX_WIDTH, AREATEX_HEIGHT, 1};
+        const VkExtent3D areaImageExtent = {.width = AREATEX_WIDTH, .height = AREATEX_HEIGHT, .depth = 1};
 
         areaImage = createImages(pLogicalDevice,
                                  1,
@@ -84,7 +84,8 @@ namespace vkBasalt
                                  VK_FORMAT_R8G8_UNORM, // TODO search for format and save it
                                  VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                 areaMemory)[0];
+                                 areaMemory)
+                        .front();
 
         VkExtent3D searchImageExtent = {SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT, 1};
 
@@ -94,15 +95,16 @@ namespace vkBasalt
                                    VK_FORMAT_R8_UNORM, // TODO search for format and save it
                                    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                   searchMemory)[0];
+                                   searchMemory)
+                          .front();
 
         uploadToImage(pLogicalDevice, areaImage, areaImageExtent, AREATEX_SIZE, areaTexBytes);
 
         uploadToImage(pLogicalDevice, searchImage, searchImageExtent, SEARCHTEX_SIZE, searchTexBytes);
 
-        areaImageView = createImageViews(pLogicalDevice, VK_FORMAT_R8G8_UNORM, std::span{std::addressof(areaImage), 1U})[0];
+        areaImageView = createImageViews(pLogicalDevice, VK_FORMAT_R8G8_UNORM, std::span{std::addressof(areaImage), 1U}).front();
         Logger::debug("after creating area ImageView");
-        searchImageView = createImageViews(pLogicalDevice, VK_FORMAT_R8_UNORM, std::span{std::addressof(searchImage), 1U})[0];
+        searchImageView = createImageViews(pLogicalDevice, VK_FORMAT_R8_UNORM, std::span{std::addressof(searchImage), 1U}).front();
         Logger::debug("created search ImageView");
 
         imageSamplerDescriptorSetLayout = createImageSamplerDescriptorSetLayout(pLogicalDevice, 5);
@@ -194,11 +196,11 @@ namespace vkBasalt
                                                   renderPass,
                                                   pipelineLayout);
 
-        std::vector<std::vector<VkImageView>> imageViewsVector = {inputImageViews,
-                                                                  edgeImageViews,
-                                                                  std::vector<VkImageView>(inputImageViews.size(), areaImageView),
-                                                                  std::vector<VkImageView>(inputImageViews.size(), searchImageView),
-                                                                  blendImageViews};
+        std::vector imageViewsVector = {inputImageViews,
+                                        edgeImageViews,
+                                        std::vector<VkImageView>(std::size(inputImageViews), areaImageView),
+                                        std::vector<VkImageView>(std::size(inputImageViews), searchImageView),
+                                        blendImageViews};
 
         imageDescriptorSets = allocateAndWriteImageSamplerDescriptorSets(pLogicalDevice,
                                                                          descriptorPool,

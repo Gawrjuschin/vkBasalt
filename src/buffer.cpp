@@ -2,6 +2,7 @@
 #include "logical_device.hpp"
 #include "memory.hpp"
 
+#include <memory>
 #include <vulkan/vulkan_core.h>
 #include <vulkan_include.hpp>
 
@@ -14,18 +15,14 @@ namespace vkBasalt
                       VkBuffer&             buffer,
                       VkDeviceMemory&       bufferMemory)
     {
-        VkBufferCreateInfo bufferInfo = {};
+        VkBufferCreateInfo bufferInfo = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .size = size, .usage = usage, .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
 
-        bufferInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size        = size;
-        bufferInfo.usage       = usage;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-        VkResult result = pLogicalDevice->vkd.CreateBuffer(pLogicalDevice->device, &bufferInfo, nullptr, &buffer);
+        auto result = pLogicalDevice->vkd.CreateBuffer(pLogicalDevice->device, std::addressof(bufferInfo), nullptr, std::addressof(buffer));
         AssertVulkan(result);
 
         VkMemoryRequirements memRequirements;
-        pLogicalDevice->vkd.GetBufferMemoryRequirements(pLogicalDevice->device, buffer, &memRequirements);
+        pLogicalDevice->vkd.GetBufferMemoryRequirements(pLogicalDevice->device, buffer, std::addressof(memRequirements));
 
         VkMemoryAllocateInfo allocInfo = {};
 

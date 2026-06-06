@@ -56,8 +56,8 @@ namespace vkBasalt
         descriptorPool = createDescriptorPool(pLogicalDevice, std::span{std::addressof(imagePoolSize), 1U});
         Logger::debug("created descriptorPool");
 
-        createShaderModule(pLogicalDevice, vertexCode, &vertexModule);
-        createShaderModule(pLogicalDevice, fragmentCode, &fragmentModule);
+        createShaderModule(pLogicalDevice, vertexCode, std::addressof(vertexModule));
+        createShaderModule(pLogicalDevice, fragmentCode, std::addressof(fragmentModule));
 
         renderPass = createRenderPass(pLogicalDevice, format);
 
@@ -137,7 +137,7 @@ namespace vkBasalt
         renderPassBeginInfo.pNext             = nullptr;
         renderPassBeginInfo.renderPass        = renderPass;
         renderPassBeginInfo.framebuffer       = framebuffers[imageIndex];
-        renderPassBeginInfo.renderArea.offset = {0, 0};
+        renderPassBeginInfo.renderArea.offset = {.x = 0, .y = 0};
         renderPassBeginInfo.renderArea.extent = imageExtent;
         VkClearValue clearValue               = {{{0.0F, 0.0F, 0.0F, 1.0F}}};
         renderPassBeginInfo.clearValueCount   = 1;

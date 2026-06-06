@@ -4,11 +4,14 @@
 #include "format.hpp"
 #include "vulkan_include.hpp"
 
+#include <array>
 #include <cstdint>
-#include <logger.hpp>
 #include <vector>
-#include <vulkan/vulkan_core.h>
 #include <string>
+
+#include <vulkan/vulkan_core.h>
+
+#include <logger.hpp>
 
 namespace vkBasalt
 {
@@ -19,18 +22,18 @@ namespace vkBasalt
     {
         std::vector<VkImage> fakeImages(count);
 
-        VkFormat srgbFormat =
+        const auto srgbFormat =
             isSRGB(swapchainCreateInfo.imageFormat) ? swapchainCreateInfo.imageFormat : convertToSRGB(swapchainCreateInfo.imageFormat);
-        VkFormat unormFormat =
+        const auto unormFormat =
             isSRGB(swapchainCreateInfo.imageFormat) ? convertToUNORM(swapchainCreateInfo.imageFormat) : swapchainCreateInfo.imageFormat;
 
-        VkFormat formats[] = {unormFormat, srgbFormat};
+        const std::array formats{unormFormat, srgbFormat};
 
         VkImageFormatListCreateInfoKHR imageFormatListCreateInfo;
         imageFormatListCreateInfo.sType           = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR;
         imageFormatListCreateInfo.pNext           = nullptr;
-        imageFormatListCreateInfo.viewFormatCount = 2;
-        imageFormatListCreateInfo.pViewFormats    = formats;
+        imageFormatListCreateInfo.viewFormatCount = std::size(formats);
+        imageFormatListCreateInfo.pViewFormats    = std::data(formats);
 
         VkImageCreateInfo imageCreateInfo;
         imageCreateInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -52,7 +55,7 @@ namespace vkBasalt
         imageCreateInfo.pQueueFamilyIndices   = swapchainCreateInfo.pQueueFamilyIndices;
         imageCreateInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        for (uint32_t i = 0; i < count; i++)
+        for (uint32_t i = 0; i < count; ++i)
         {
             const auto result = pLogicalDevice->vkd.CreateImage(pLogicalDevice->device, &imageCreateInfo, nullptr, &(fakeImages[i]));
             AssertVulkan(result);

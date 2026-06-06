@@ -31,55 +31,55 @@ namespace vkBasalt
         }
     }
 
-    std::vector<std::shared_ptr<ReshadeUniform>> createReshadeUniforms(reshadefx::module module)
+    std::vector<std::unique_ptr<ReshadeUniform>> createReshadeUniforms(reshadefx::module module)
     {
-        std::vector<std::shared_ptr<ReshadeUniform>> uniforms;
+        std::vector<std::unique_ptr<ReshadeUniform>> uniforms;
         for (auto& uniform : module.uniforms)
         {
-            auto source = std::ranges::find(uniform.annotations, "source", &reshadefx::annotation::name)->value.string_data;
+            const auto source = std::ranges::find(uniform.annotations, "source", &reshadefx::annotation::name)->value.string_data;
             if (source == "frametime")
             {
-                uniforms.push_back(std::shared_ptr<ReshadeUniform>(new FrameTimeUniform(uniform)));
+                uniforms.emplace_back(std::make_unique<FrameTimeUniform>(uniform));
             }
             else if (source == "framecount")
             {
-                uniforms.push_back(std::shared_ptr<ReshadeUniform>(new FrameCountUniform(uniform)));
+                uniforms.emplace_back(std::make_unique<FrameCountUniform>(uniform));
             }
             else if (source == "date")
             {
-                uniforms.push_back(std::shared_ptr<ReshadeUniform>(new DateUniform(uniform)));
+                uniforms.emplace_back(std::make_unique<DateUniform>(uniform));
             }
             else if (source == "timer")
             {
-                uniforms.push_back(std::shared_ptr<ReshadeUniform>(new TimerUniform(uniform)));
+                uniforms.emplace_back(std::make_unique<TimerUniform>(uniform));
             }
             else if (source == "pingpong")
             {
-                uniforms.push_back(std::shared_ptr<ReshadeUniform>(new PingPongUniform(uniform)));
+                uniforms.emplace_back(std::make_unique<PingPongUniform>(uniform));
             }
             else if (source == "random")
             {
-                uniforms.push_back(std::shared_ptr<ReshadeUniform>(new RandomUniform(uniform)));
+                uniforms.emplace_back(std::make_unique<RandomUniform>(uniform));
             }
             else if (source == "key")
             {
-                uniforms.push_back(std::shared_ptr<ReshadeUniform>(new KeyUniform(uniform)));
+                uniforms.emplace_back(std::make_unique<KeyUniform>(uniform));
             }
             else if (source == "mousebutton")
             {
-                uniforms.push_back(std::shared_ptr<ReshadeUniform>(new MouseButtonUniform(uniform)));
+                uniforms.emplace_back(std::make_unique<MouseButtonUniform>(uniform));
             }
             else if (source == "mousepoint")
             {
-                uniforms.push_back(std::shared_ptr<ReshadeUniform>(new MousePointUniform(uniform)));
+                uniforms.emplace_back(std::make_unique<MousePointUniform>(uniform));
             }
             else if (source == "mousedelta")
             {
-                uniforms.push_back(std::shared_ptr<ReshadeUniform>(new MouseDeltaUniform(uniform)));
+                uniforms.emplace_back(std::make_unique<MouseDeltaUniform>(uniform));
             }
             else if (source == "bufready_depth")
             {
-                uniforms.push_back(std::shared_ptr<ReshadeUniform>(new DepthUniform(uniform)));
+                uniforms.emplace_back(std::make_unique<DepthUniform>(uniform));
             }
         }
         return uniforms;
@@ -248,7 +248,7 @@ namespace vkBasalt
                 currentValue[0] = min, currentValue[1] = 1.0F;
             }
         }
-        std::memcpy((uint8_t*) mapedBuffer + offset, currentValue, sizeof(float) * 2);
+        std::ranges::copy(currentValue, static_cast<uint8_t*>(mapedBuffer) + offset);
     }
     PingPongUniform::~PingPongUniform()
     {

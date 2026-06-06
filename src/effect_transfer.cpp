@@ -13,14 +13,10 @@ namespace vkBasalt
                                    VkExtent2D               imageExtent,
                                    std::span<const VkImage> inputImages,
                                    std::span<const VkImage> outputImages,
-                                   Config*                  pConfig)
+                                   Config*                  pConfig) :
+        pLogicalDevice{pLogicalDevice}, inputImages(std::cbegin(inputImages), std::cend(inputImages)),
+        outputImages(std::cbegin(outputImages), std::cend(outputImages)), imageExtent{imageExtent}, format{format}, pConfig{pConfig}
     {
-        this->pLogicalDevice = pLogicalDevice;
-        this->format         = format;
-        this->imageExtent    = imageExtent;
-        this->inputImages.assign(std::cbegin(inputImages), std::cend(inputImages));
-        this->outputImages.assign(std::cbegin(outputImages), std::cend(outputImages));
-        this->pConfig        = pConfig;
     }
 
     void TransferEffect::applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer)
@@ -34,7 +30,7 @@ namespace vkBasalt
         imageCopy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         imageCopy.dstSubresource.layerCount = 1;
         imageCopy.dstOffset                 = {};
-        imageCopy.extent                    = {imageExtent.width, imageExtent.height, 1};
+        imageCopy.extent                    = {.width = imageExtent.width, .height = imageExtent.height, .depth = 1};
 
         VkImageMemoryBarrier memoryBarrier;
         memoryBarrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;

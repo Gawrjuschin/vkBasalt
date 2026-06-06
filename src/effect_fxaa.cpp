@@ -4,10 +4,11 @@
 #include "shader_sources.hpp"
 
 #include <array>
+#include <cstddef>
 #include <memory>
+#include <ranges>
 #include <span>
 #include <vector>
-#include <cstdint>
 
 #include <vulkan/vulkan_core.h>
 
@@ -27,19 +28,24 @@ namespace vkBasalt
         vertexCode   = full_screen_triangle_vert;
         fragmentCode = fxaa_frag;
 
-        std::array<VkSpecializationMapEntry, 5U> specMapEntrys{}; // TODO: why 5
+        constexpr auto static specMapEntrys{[] {
+            constexpr static std::size_t               size{5};
+            std::array<VkSpecializationMapEntry, size> specMapEntrys{}; // TODO: why 5
 
-        for (uint32_t i = 0; i < std::size(specMapEntrys); ++i)
-        {
-            specMapEntrys[i].constantID = i;
-            specMapEntrys[i].offset     = sizeof(float) * i;
-            specMapEntrys[i].size       = sizeof(float);
-        }
-        std::array specData = {fxaaQualitySubpix,
-                               fxaaQualityEdgeThreshold,
-                               fxaaQualityEdgeThresholdMin,
-                               static_cast<float>(imageExtent.width),
-                               static_cast<float>(imageExtent.height)};
+            for (auto [i, entry] : std::views::enumerate(specMapEntrys))
+            {
+                entry.constantID = i;
+                entry.offset     = sizeof(float) * i;
+                entry.size       = sizeof(float);
+            }
+            return specMapEntrys;
+        }()};
+
+        const std::array specData = {fxaaQualitySubpix,
+                                     fxaaQualityEdgeThreshold,
+                                     fxaaQualityEdgeThresholdMin,
+                                     static_cast<float>(imageExtent.width),
+                                     static_cast<float>(imageExtent.height)};
 
         VkSpecializationInfo fragmentSpecializationInfo;
         fragmentSpecializationInfo.mapEntryCount = std::size(specMapEntrys);

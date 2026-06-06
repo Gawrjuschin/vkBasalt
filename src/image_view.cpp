@@ -19,7 +19,6 @@ namespace vkBasalt
                                               VkImageAspectFlags       aspectMask,
                                               uint32_t                 mipLevels)
     {
-        std::vector<VkImageView> imageViews(std::size(images));
 
         VkImageViewCreateInfo imageViewCreateInfo;
 
@@ -40,10 +39,12 @@ namespace vkBasalt
         imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
         imageViewCreateInfo.subresourceRange.layerCount     = 1;
 
+        std::vector<VkImageView> imageViews(std::size(images));
         std::ranges::transform(images, std::begin(imageViews), [pLogicalDevice, &imageViewCreateInfo](const VkImage& image) -> VkImageView {
             VkImageView imageView{};
             imageViewCreateInfo.image = image;
-            VkResult result = pLogicalDevice->vkd.CreateImageView(pLogicalDevice->device, &imageViewCreateInfo, nullptr, std::addressof(imageView));
+            const auto result =
+                pLogicalDevice->vkd.CreateImageView(pLogicalDevice->device, std::addressof(imageViewCreateInfo), nullptr, std::addressof(imageView));
             AssertVulkan(result);
             return imageView;
         });

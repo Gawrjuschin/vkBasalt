@@ -49,11 +49,6 @@ namespace vkBasalt
         Logger::err("no good config file");
     }
 
-    Config::Config(const Config& other)
-    {
-        this->options = other.options;
-    }
-
     void Config::readConfigFile(std::istream& stream)
     {
         std::string line;

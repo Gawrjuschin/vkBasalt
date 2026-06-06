@@ -116,7 +116,7 @@ namespace vkBasalt
                                                        &memoryBarrier);
             }
 
-            result = pLogicalDevice->vkd.EndCommandBuffer(commandBuffers[i]);
+            result = pLogicalDevice->vkd.EndCommandBuffer(commandBuffers[i]); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
             AssertVulkan(result);
         }
     }

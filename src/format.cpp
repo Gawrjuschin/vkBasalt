@@ -1,9 +1,12 @@
 #include "format.hpp"
 #include "logical_device.hpp"
 
-#include <logger.hpp>
+#include <array>
+#include <span>
+
 #include <vulkan/vulkan_core.h>
-#include <vector>
+
+#include <logger.hpp>
 
 namespace vkBasalt
 {
@@ -99,7 +102,7 @@ namespace vkBasalt
         return convertToSRGB(format) != format;
     }
 
-    VkFormat getSupportedFormat(LogicalDevice* pLogicalDevice, std::vector<VkFormat> formats, VkFormatFeatureFlags features, VkImageTiling tiling)
+    VkFormat getSupportedFormat(LogicalDevice* pLogicalDevice, std::span<const VkFormat> formats, VkFormatFeatureFlags features, VkImageTiling tiling)
     {
         for (auto& format : formats)
         {
@@ -120,7 +123,7 @@ namespace vkBasalt
 
     VkFormat getStencilFormat(LogicalDevice* pLogicalDevice)
     {
-        std::vector<VkFormat> stencilFormats = {VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D32_SFLOAT_S8_UINT};
+        constexpr static std::array stencilFormats{VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D32_SFLOAT_S8_UINT};
         return getSupportedFormat(pLogicalDevice, stencilFormats, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
     }
 

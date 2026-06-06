@@ -2,6 +2,7 @@
 #include "logical_device.hpp"
 #include "config.hpp"
 #include "shader_sources.hpp"
+#include <memory>
 #include <vulkan/vulkan_core.h>
 #include <span>
 
@@ -20,19 +21,17 @@ namespace vkBasalt
         vertexCode   = full_screen_triangle_vert;
         fragmentCode = cas_frag;
 
-        VkSpecializationMapEntry sharpnessMapEntry;
-        sharpnessMapEntry.constantID = 0;
-        sharpnessMapEntry.offset     = 0;
-        sharpnessMapEntry.size       = sizeof(float);
+        constexpr static VkSpecializationMapEntry sharpnessMapEntry{
+            .constantID = 0,
+            .offset     = 0,
+            .size       = sizeof(float),
+        };
 
-        VkSpecializationInfo fragmentSpecializationInfo;
-        fragmentSpecializationInfo.mapEntryCount = 1;
-        fragmentSpecializationInfo.pMapEntries   = &sharpnessMapEntry;
-        fragmentSpecializationInfo.dataSize      = sizeof(float);
-        fragmentSpecializationInfo.pData         = &sharpness;
+        VkSpecializationInfo fragmentSpecializationInfo{
+            .mapEntryCount = 1, .pMapEntries = std::addressof(sharpnessMapEntry), .dataSize = sizeof(float), .pData = std::addressof(sharpness)};
 
         pVertexSpecInfo   = nullptr;
-        pFragmentSpecInfo = &fragmentSpecializationInfo;
+        pFragmentSpecInfo = std::addressof(fragmentSpecializationInfo);
 
         init(pLogicalDevice, format, imageExtent, inputImages, outputImages, pConfig);
     }

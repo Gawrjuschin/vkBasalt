@@ -20,6 +20,12 @@ namespace vkBasalt
                      std::span<const VkImage> inputImages,
                      std::span<const VkImage> outputImages,
                      Config*                  pConfig);
+
+        DebandEffect(const DebandEffect&)            = delete;
+        DebandEffect& operator=(const DebandEffect&) = delete;
+        DebandEffect(DebandEffect&&)                 = delete;
+        DebandEffect& operator=(DebandEffect&&)      = delete;
+
         ~DebandEffect() override;
     };
 } // namespace vkBasalt

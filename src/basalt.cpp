@@ -301,15 +301,19 @@ namespace vkBasalt
                                              std::next(modifiedCreateInfo.ppEnabledExtensionNames, modifiedCreateInfo.enabledExtensionCount));
             }
 
-            if (supportsMutableFormat)
+            if (supportsMutableFormat && not std::ranges::contains(enabledExtensionNames, "VK_KHR_swapchain_mutable_format"))
             {
                 Logger::debug("activating mutable_format");
-                addUniqueCString(enabledExtensionNames, "VK_KHR_swapchain_mutable_format");
+                enabledExtensionNames.emplace_back("VK_KHR_swapchain_mutable_format");
             }
-            if (deviceProps.apiVersion < VK_API_VERSION_1_2 || instanceData.version < VK_API_VERSION_1_2)
+
+            if ((deviceProps.apiVersion < VK_API_VERSION_1_2 || instanceData.version < VK_API_VERSION_1_2)
+                && std::ranges::contains(enabledExtensionNames, "VK_KHR_image_format_list"))
             {
-                addUniqueCString(enabledExtensionNames, "VK_KHR_image_format_list");
+                Logger::debug("activating image_format_list");
+                enabledExtensionNames.emplace_back("VK_KHR_image_format_list");
             }
+
             modifiedCreateInfo.ppEnabledExtensionNames = std::data(enabledExtensionNames);
             modifiedCreateInfo.enabledExtensionCount   = std::size(enabledExtensionNames);
 

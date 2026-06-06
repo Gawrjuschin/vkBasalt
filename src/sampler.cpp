@@ -2,6 +2,7 @@
 #include "logical_device.hpp"
 #include "effect_module.hpp"
 #include "vulkan_include.hpp"
+#include <memory>
 #include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
@@ -10,27 +11,27 @@ namespace vkBasalt
     {
         VkSampler sampler{};
 
-        VkSamplerCreateInfo samplerCreateInfo;
-        samplerCreateInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerCreateInfo.pNext                   = nullptr;
-        samplerCreateInfo.flags                   = 0;
-        samplerCreateInfo.magFilter               = VK_FILTER_LINEAR;
-        samplerCreateInfo.minFilter               = VK_FILTER_LINEAR;
-        samplerCreateInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerCreateInfo.addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerCreateInfo.addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerCreateInfo.addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        samplerCreateInfo.mipLodBias              = 0.0F;
-        samplerCreateInfo.anisotropyEnable        = VK_FALSE;
-        samplerCreateInfo.maxAnisotropy           = 16;
-        samplerCreateInfo.compareEnable           = VK_FALSE;
-        samplerCreateInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
-        samplerCreateInfo.minLod                  = 0.0F;
-        samplerCreateInfo.maxLod                  = 0.0F;
-        samplerCreateInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
+        VkSamplerCreateInfo samplerCreateInfo{.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+                                              .pNext                   = nullptr,
+                                              .flags                   = 0,
+                                              .magFilter               = VK_FILTER_LINEAR,
+                                              .minFilter               = VK_FILTER_LINEAR,
+                                              .mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+                                              .addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                              .addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                              .addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                              .mipLodBias              = 0.0F,
+                                              .anisotropyEnable        = VK_FALSE,
+                                              .maxAnisotropy           = 16,
+                                              .compareEnable           = VK_FALSE,
+                                              .compareOp               = VK_COMPARE_OP_ALWAYS,
+                                              .minLod                  = 0.0F,
+                                              .maxLod                  = 0.0F,
+                                              .borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+                                              .unnormalizedCoordinates = VK_FALSE};
 
-        const auto result = pLogicalDevice->vkd.CreateSampler(pLogicalDevice->device, &samplerCreateInfo, nullptr, &sampler);
+        const auto result =
+            pLogicalDevice->vkd.CreateSampler(pLogicalDevice->device, std::addressof(samplerCreateInfo), nullptr, std::addressof(sampler));
         AssertVulkan(result);
         return sampler;
     }
@@ -44,27 +45,27 @@ namespace vkBasalt
         VkSamplerMipmapMode mipmapMode{};
         convertReshadeFilter(samplerInfo.filter, minFilter, magFilter, mipmapMode);
 
-        VkSamplerCreateInfo samplerCreateInfo;
-        samplerCreateInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerCreateInfo.pNext                   = nullptr;
-        samplerCreateInfo.flags                   = 0;
-        samplerCreateInfo.magFilter               = magFilter;
-        samplerCreateInfo.minFilter               = minFilter;
-        samplerCreateInfo.mipmapMode              = mipmapMode;
-        samplerCreateInfo.addressModeU            = convertReshadeAddressMode(samplerInfo.address_u);
-        samplerCreateInfo.addressModeV            = convertReshadeAddressMode(samplerInfo.address_v);
-        samplerCreateInfo.addressModeW            = convertReshadeAddressMode(samplerInfo.address_w);
-        samplerCreateInfo.mipLodBias              = samplerInfo.lod_bias;
-        samplerCreateInfo.anisotropyEnable        = VK_FALSE;
-        samplerCreateInfo.maxAnisotropy           = 16;
-        samplerCreateInfo.compareEnable           = VK_FALSE;
-        samplerCreateInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
-        samplerCreateInfo.minLod                  = samplerInfo.min_lod;
-        samplerCreateInfo.maxLod                  = samplerInfo.max_lod;
-        samplerCreateInfo.borderColor             = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-        samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
+        VkSamplerCreateInfo samplerCreateInfo{.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+                                              .pNext                   = nullptr,
+                                              .flags                   = 0,
+                                              .magFilter               = magFilter,
+                                              .minFilter               = minFilter,
+                                              .mipmapMode              = mipmapMode,
+                                              .addressModeU            = convertReshadeAddressMode(samplerInfo.address_u),
+                                              .addressModeV            = convertReshadeAddressMode(samplerInfo.address_v),
+                                              .addressModeW            = convertReshadeAddressMode(samplerInfo.address_w),
+                                              .mipLodBias              = samplerInfo.lod_bias,
+                                              .anisotropyEnable        = VK_FALSE,
+                                              .maxAnisotropy           = 16,
+                                              .compareEnable           = VK_FALSE,
+                                              .compareOp               = VK_COMPARE_OP_ALWAYS,
+                                              .minLod                  = samplerInfo.min_lod,
+                                              .maxLod                  = samplerInfo.max_lod,
+                                              .borderColor             = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
+                                              .unnormalizedCoordinates = VK_FALSE};
 
-        VkResult result = pLogicalDevice->vkd.CreateSampler(pLogicalDevice->device, &samplerCreateInfo, nullptr, &sampler);
+        const auto result =
+            pLogicalDevice->vkd.CreateSampler(pLogicalDevice->device, std::addressof(samplerCreateInfo), nullptr, std::addressof(sampler));
         AssertVulkan(result);
         return sampler;
     }

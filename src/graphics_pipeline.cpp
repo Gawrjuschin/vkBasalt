@@ -3,6 +3,7 @@
 #include "vulkan_include.hpp"
 
 #include <string>
+#include <span>
 
 #include <vulkan/vulkan_core.h>
 
@@ -20,7 +21,7 @@ namespace vkBasalt
         pipelineLayoutCreateInfo.pPushConstantRanges    = nullptr;
 
         VkPipelineLayout pipelineLayout{};
-        VkResult result = pLogicalDevice->vkd.CreatePipelineLayout(pLogicalDevice->device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
+        const auto result = pLogicalDevice->vkd.CreatePipelineLayout(pLogicalDevice->device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
         AssertVulkan(result);
         return pipelineLayout;
     }
@@ -86,7 +87,7 @@ namespace vkBasalt
         viewport.maxDepth = 1.0F;
 
         VkRect2D scissor;
-        scissor.offset = {0, 0};
+        scissor.offset = {.x = 0, .y = 0};
         scissor.extent = {extent.width, extent.height};
 
         VkPipelineViewportStateCreateInfo viewportStateCreateInfo;

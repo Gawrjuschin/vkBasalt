@@ -20,6 +20,12 @@ namespace vkBasalt
                    std::span<const VkImage> inputImages,
                    std::span<const VkImage> outputImages,
                    Config*                  pConfig);
+
+        FxaaEffect(const FxaaEffect&)            = delete;
+        FxaaEffect& operator=(const FxaaEffect&) = delete;
+        FxaaEffect(FxaaEffect&&)                 = delete;
+        FxaaEffect& operator=(FxaaEffect&&)      = delete;
+
         ~FxaaEffect() override;
     };
 } // namespace vkBasalt

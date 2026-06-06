@@ -3,7 +3,7 @@
 
 #include "logical_device.hpp"
 
-#include <vector>
+#include <span>
 
 #include <vulkan/vulkan_core.h>
 
@@ -19,10 +19,10 @@ namespace vkBasalt
     // TODO currently return false if format is UNORM and no matching sRGB format exist
     bool isUNORM(VkFormat format);
 
-    VkFormat getSupportedFormat(LogicalDevice*        pLogicalDevice,
-                                std::vector<VkFormat> formats,
-                                VkFormatFeatureFlags  features,
-                                VkImageTiling         tiling = VK_IMAGE_TILING_OPTIMAL);
+    VkFormat getSupportedFormat(LogicalDevice*            pLogicalDevice,
+                                std::span<const VkFormat> formats,
+                                VkFormatFeatureFlags      features,
+                                VkImageTiling             tiling = VK_IMAGE_TILING_OPTIMAL);
 
     VkFormat getStencilFormat(LogicalDevice* pLogicalDevice);
 

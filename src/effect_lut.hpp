@@ -21,7 +21,14 @@ namespace vkBasalt
                   std::span<const VkImage> inputImages,
                   std::span<const VkImage> outputImages,
                   Config*                  pConfig);
+
+        LutEffect(const LutEffect&)            = delete;
+        LutEffect& operator=(const LutEffect&) = delete;
+        LutEffect(LutEffect&&)                 = delete;
+        LutEffect& operator=(LutEffect&&)      = delete;
+
         ~LutEffect() override;
+
         void applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
 
     private:

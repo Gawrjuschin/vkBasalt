@@ -29,10 +29,15 @@ namespace vkBasalt
                       std::span<const VkImage> outputImages,
                       Config*                  pConfig,
                       std::string_view         effectName);
+        ReshadeEffect(const ReshadeEffect&)            = delete;
+        ReshadeEffect& operator=(const ReshadeEffect&) = delete;
+        ReshadeEffect(ReshadeEffect&&)                 = delete;
+        ReshadeEffect& operator=(ReshadeEffect&&)      = delete;
+        ~ReshadeEffect() override;
+
         void applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
         void updateEffect() override;
         void useDepthImage(VkImageView depthImageView) override;
-        ~ReshadeEffect() override;
 
     private:
         LogicalDevice*           pLogicalDevice;
@@ -62,7 +67,7 @@ namespace vkBasalt
 
         VkDescriptorSetLayout                 uniformDescriptorSetLayout;
         VkDescriptorSetLayout                 imageSamplerDescriptorSetLayout;
-        VkShaderModule                        shaderModule;
+        VkShaderModule                        shaderModule{};
         VkDescriptorPool                      descriptorPool;
         std::vector<VkRenderPass>             renderPasses;
         std::vector<std::vector<std::string>> renderTargets;
@@ -84,16 +89,16 @@ namespace vkBasalt
         VkImageView stencilImageView;
         // how often the shader writes to the reshade back buffer
         // we need to flip the "backbuffer" after each write if there is a next one
-        int                      outputWrites = 0;
+        int                      outputWrites{};
         std::vector<VkImage>     backBufferImages;
         std::vector<VkImageView> backBufferImageViewsUNORM;
         std::vector<VkImageView> backBufferImageViewsSRGB;
-        VkBuffer                 stagingBuffer;
-        VkDeviceMemory           stagingBufferMemory;
-        uint32_t                 bufferSize;
-        VkDescriptorSet          bufferDescriptorSet;
+        VkBuffer                 stagingBuffer{};
+        VkDeviceMemory           stagingBufferMemory{};
+        uint32_t                 bufferSize{};
+        VkDescriptorSet          bufferDescriptorSet{};
 
-        std::vector<std::shared_ptr<ReshadeUniform>> uniforms;
+        std::vector<std::unique_ptr<ReshadeUniform>> uniforms;
 
         void          createReshadeModule();
         VkFormat      convertReshadeFormat(reshadefx::texture_format texFormat);

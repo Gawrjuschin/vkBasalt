@@ -5,6 +5,7 @@
 #include "format.hpp"
 #include "vulkan_include.hpp"
 
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <vector>
@@ -23,16 +24,16 @@ namespace vkBasalt
     {
         std::vector<VkImage> images(count);
 
-        VkFormat srgbFormat  = isSRGB(format) ? format : convertToSRGB(format);
-        VkFormat unormFormat = isSRGB(format) ? convertToUNORM(format) : format;
+        const auto srgbFormat  = isSRGB(format) ? format : convertToSRGB(format);
+        const auto unormFormat = isSRGB(format) ? convertToUNORM(format) : format;
 
-        VkFormat formats[] = {unormFormat, srgbFormat};
+        const std::array formats{unormFormat, srgbFormat};
 
         VkImageFormatListCreateInfoKHR imageFormatListCreateInfo;
         imageFormatListCreateInfo.sType           = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR;
         imageFormatListCreateInfo.pNext           = nullptr;
-        imageFormatListCreateInfo.viewFormatCount = 2;
-        imageFormatListCreateInfo.pViewFormats    = formats;
+        imageFormatListCreateInfo.viewFormatCount = std::size(formats);
+        imageFormatListCreateInfo.pViewFormats    = std::data(formats);
 
         VkImageCreateInfo imageCreateInfo;
         imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -154,7 +155,7 @@ namespace vkBasalt
         region.imageSubresource.mipLevel       = 0;
         region.imageSubresource.baseArrayLayer = 0;
         region.imageSubresource.layerCount     = 1;
-        region.imageOffset                     = {0, 0, 0};
+        region.imageOffset                     = {.x = 0, .y = 0, .z = 0};
         region.imageExtent                     = extent;
 
         pLogicalDevice->vkd.CmdCopyBufferToImage(commandBuffer, stagingBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);

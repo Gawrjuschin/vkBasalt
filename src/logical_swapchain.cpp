@@ -1,6 +1,5 @@
 #include "logical_swapchain.hpp"
 
-#include <cstdint>
 #include <logger.hpp>
 
 namespace vkBasalt
@@ -25,9 +24,9 @@ namespace vkBasalt
                 pLogicalDevice->vkd.DestroyImage(pLogicalDevice->device, fakeImage, nullptr);
             }
 
-            for (unsigned int i = 0; i < imageCount; i++)
+            for (auto& semaphore : std::span{semaphores}.subspan(0, imageCount))
             {
-                pLogicalDevice->vkd.DestroySemaphore(pLogicalDevice->device, semaphores[i], nullptr);
+                pLogicalDevice->vkd.DestroySemaphore(pLogicalDevice->device, semaphore, nullptr);
             }
             Logger::debug("after DestroySemaphore");
         }

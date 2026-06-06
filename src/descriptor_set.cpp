@@ -3,10 +3,13 @@
 #include "logger.hpp"
 
 #include <algorithm>
-#include <ranges>
-#include <functional>
-#include <vector>
+#include <cstddef>
 #include <cstdint>
+#include <functional>
+#include <memory>
+#include <span>
+#include <ranges>
+#include <vector>
 
 #include <vulkan_include.hpp>
 
@@ -137,7 +140,7 @@ namespace vkBasalt
                                                                             std::vector<VkSampler>                samplers,
                                                                             std::vector<std::vector<VkImageView>> imageViewsVectors)
     {
-        std::vector<VkDescriptorSet> descriptorSets(imageViewsVectors[0].size());
+        std::vector<VkDescriptorSet> descriptorSets(std::size(imageViewsVectors.front()));
 
         std::vector<VkDescriptorSetLayout> layouts(descriptorSets.size(), descriptorSetLayout);
         VkDescriptorSetAllocateInfo        descriptorSetAllocateInfo;
@@ -151,40 +154,38 @@ namespace vkBasalt
         const auto result = pLogicalDevice->vkd.AllocateDescriptorSets(pLogicalDevice->device, &descriptorSetAllocateInfo, descriptorSets.data());
         AssertVulkan(result);
 
-        VkDescriptorImageInfo imageInfo;
-        imageInfo.sampler     = VK_NULL_HANDLE;
-        imageInfo.imageView   = VK_NULL_HANDLE;
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        std::vector<VkDescriptorImageInfo> imageInfos(imageViewsVectors.size(), imageInfo);
+        ;
 
-        VkWriteDescriptorSet writeDescriptorSet = {};
+        std::vector<VkDescriptorImageInfo> imageInfos(
+            std::size(imageViewsVectors),
+            {.sampler = VK_NULL_HANDLE, .imageView = VK_NULL_HANDLE, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
 
-        writeDescriptorSet.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSet.pNext            = nullptr;
-        writeDescriptorSet.dstSet           = VK_NULL_HANDLE;
-        writeDescriptorSet.dstBinding       = 0;
-        writeDescriptorSet.dstArrayElement  = 0;
-        writeDescriptorSet.descriptorCount  = 1;
-        writeDescriptorSet.descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        writeDescriptorSet.pImageInfo       = nullptr;
-        writeDescriptorSet.pBufferInfo      = nullptr;
-        writeDescriptorSet.pTexelBufferView = nullptr;
+        std::vector<VkWriteDescriptorSet> writeDescriptorSets(std::size(imageViewsVectors),
+                                                              {.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                                               .pNext            = nullptr,
+                                                               .dstSet           = VK_NULL_HANDLE,
+                                                               .dstBinding       = 0,
+                                                               .dstArrayElement  = 0,
+                                                               .descriptorCount  = 1,
+                                                               .descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                               .pImageInfo       = nullptr,
+                                                               .pBufferInfo      = nullptr,
+                                                               .pTexelBufferView = nullptr});
 
-        std::vector<VkWriteDescriptorSet> writeDescriptorSets(imageViewsVectors.size(), writeDescriptorSet);
-
-        for (unsigned int i = 0; i < descriptorSets.size(); i++)
+        for (std::size_t i{0}; i < std::size(descriptorSets); ++i)
         {
-            for (uint32_t j = 0; j < imageViewsVectors.size(); j++)
+            for (std::size_t j{0}; j < std::size(imageViewsVectors); ++j)
             {
                 imageInfos[j].sampler   = samplers[j];
-                imageInfos[j].imageView = imageViewsVectors[j][i];
+                imageInfos[j].imageView = imageViewsVectors[j][i]; // TODO: maybe error!
 
                 writeDescriptorSets[j].dstBinding = j;
-                writeDescriptorSets[j].pImageInfo = &imageInfos[j];
+                writeDescriptorSets[j].pImageInfo = std::addressof(imageInfos[j]);
                 writeDescriptorSets[j].dstSet     = descriptorSets[i];
             }
             Logger::debug("before writing descriptor Sets");
-            pLogicalDevice->vkd.UpdateDescriptorSets(pLogicalDevice->device, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
+            pLogicalDevice->vkd.UpdateDescriptorSets(
+                pLogicalDevice->device, std::size(writeDescriptorSets), std::data(writeDescriptorSets), 0, nullptr);
         }
         return descriptorSets;
     }
