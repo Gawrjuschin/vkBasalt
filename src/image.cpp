@@ -8,11 +8,83 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <memory>
+#include <ranges>
 #include <vector>
+
 #include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
+    VkImage createImage(LogicalDevice*        pLogicalDevice,
+                        VkExtent3D            extent,
+                        VkFormat              format,
+                        VkImageUsageFlags     usage,
+                        VkMemoryPropertyFlags properties,
+                        VkDeviceMemory&       imageMemory,
+                        uint32_t              mipLevels)
+    {
+        VkImage image{};
+
+        const auto unormFormat = isSRGB(format) ? convertToUNORM(format) : format;
+        const auto srgbFormat  = isSRGB(format) ? format : convertToSRGB(format);
+
+        const std::array formats{unormFormat, srgbFormat};
+
+        const VkImageFormatListCreateInfoKHR imageFormatListCreateInfo{.sType           = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR,
+                                                                       .pNext           = nullptr,
+                                                                       .viewFormatCount = std::size(formats),
+                                                                       .pViewFormats    = std::data(formats)};
+
+        const VkImageCreateInfo imageCreateInfo{
+            .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .pNext                 = (unormFormat == srgbFormat) ? nullptr : std::addressof(imageFormatListCreateInfo),
+            .flags                 = static_cast<VkImageCreateFlags>((unormFormat == srgbFormat) ? 0 : VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT),
+            .imageType             = (extent.depth == 1) ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_3D,
+            .format                = format,
+            .extent                = extent,
+            .mipLevels             = mipLevels,
+            .arrayLayers           = 1,
+            .samples               = VK_SAMPLE_COUNT_1_BIT,
+            .tiling                = VK_IMAGE_TILING_OPTIMAL,
+            .usage                 = usage,
+            .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,       // Don't care
+            .pQueueFamilyIndices   = nullptr, // Don't care
+            .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED};
+
+        {
+            const auto result =
+                pLogicalDevice->vkd.CreateImage(pLogicalDevice->device, std::addressof(imageCreateInfo), nullptr, std::addressof(image));
+            AssertVulkan(result);
+        }
+
+        // Allocate a bunch of memory for all images at one
+        VkMemoryRequirements memoryRequirements;
+        pLogicalDevice->vkd.GetImageMemoryRequirements(pLogicalDevice->device, image, std::addressof(memoryRequirements));
+
+        if (memoryRequirements.size % memoryRequirements.alignment != 0)
+        {
+            memoryRequirements.size = (memoryRequirements.size / memoryRequirements.alignment + 1) * memoryRequirements.alignment;
+        }
+
+        const VkMemoryAllocateInfo memoryAllocateInfo{.sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                                                      .pNext          = nullptr,
+                                                      .allocationSize = memoryRequirements.size * 1U,
+                                                      .memoryTypeIndex =
+                                                          findMemoryTypeIndex(pLogicalDevice, memoryRequirements.memoryTypeBits, properties)};
+
+        const auto result =
+            pLogicalDevice->vkd.AllocateMemory(pLogicalDevice->device, std::addressof(memoryAllocateInfo), nullptr, std::addressof(imageMemory));
+        AssertVulkan(result);
+
+        {
+            const auto result = pLogicalDevice->vkd.BindImageMemory(pLogicalDevice->device, image, imageMemory, memoryRequirements.size * 0U);
+            AssertVulkan(result);
+        }
+        return image;
+    }
+
     std::vector<VkImage> createImages(LogicalDevice*        pLogicalDevice,
                                       uint32_t              count,
                                       VkExtent3D            extent,
@@ -24,67 +96,61 @@ namespace vkBasalt
     {
         std::vector<VkImage> images(count);
 
-        const auto srgbFormat  = isSRGB(format) ? format : convertToSRGB(format);
         const auto unormFormat = isSRGB(format) ? convertToUNORM(format) : format;
+        const auto srgbFormat  = isSRGB(format) ? format : convertToSRGB(format);
 
         const std::array formats{unormFormat, srgbFormat};
 
-        VkImageFormatListCreateInfoKHR imageFormatListCreateInfo;
-        imageFormatListCreateInfo.sType           = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR;
-        imageFormatListCreateInfo.pNext           = nullptr;
-        imageFormatListCreateInfo.viewFormatCount = std::size(formats);
-        imageFormatListCreateInfo.pViewFormats    = std::data(formats);
+        const VkImageFormatListCreateInfoKHR imageFormatListCreateInfo{.sType           = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR,
+                                                                       .pNext           = nullptr,
+                                                                       .viewFormatCount = std::size(formats),
+                                                                       .pViewFormats    = std::data(formats)};
 
-        VkImageCreateInfo imageCreateInfo;
-        imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageCreateInfo.pNext = (unormFormat == srgbFormat) ? nullptr : &imageFormatListCreateInfo;
-        imageCreateInfo.flags = (unormFormat == srgbFormat) ? 0 : VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
-        if (extent.depth == 1)
-        {
-            imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-        }
-        else
-        {
-            imageCreateInfo.imageType = VK_IMAGE_TYPE_3D;
-        }
-        imageCreateInfo.format                = format;
-        imageCreateInfo.extent                = extent;
-        imageCreateInfo.mipLevels             = mipLevels;
-        imageCreateInfo.arrayLayers           = 1;
-        imageCreateInfo.samples               = VK_SAMPLE_COUNT_1_BIT;
-        imageCreateInfo.tiling                = VK_IMAGE_TILING_OPTIMAL;
-        imageCreateInfo.usage                 = usage;
-        imageCreateInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
-        imageCreateInfo.queueFamilyIndexCount = 0;       // Don't care
-        imageCreateInfo.pQueueFamilyIndices   = nullptr; // Don't care
-        imageCreateInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
+        const VkImageCreateInfo imageCreateInfo{
+            .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .pNext                 = (unormFormat == srgbFormat) ? nullptr : std::addressof(imageFormatListCreateInfo),
+            .flags                 = static_cast<VkImageCreateFlags>((unormFormat == srgbFormat) ? 0 : VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT),
+            .imageType             = (extent.depth == 1) ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_3D,
+            .format                = format,
+            .extent                = extent,
+            .mipLevels             = mipLevels,
+            .arrayLayers           = 1,
+            .samples               = VK_SAMPLE_COUNT_1_BIT,
+            .tiling                = VK_IMAGE_TILING_OPTIMAL,
+            .usage                 = usage,
+            .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,       // Don't care
+            .pQueueFamilyIndices   = nullptr, // Don't care
+            .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED};
 
-        for (uint32_t i = 0; i < count; i++)
+        for (auto& image : images)
         {
-            const auto result = pLogicalDevice->vkd.CreateImage(pLogicalDevice->device, &imageCreateInfo, nullptr, &(images[i]));
+            const auto result =
+                pLogicalDevice->vkd.CreateImage(pLogicalDevice->device, std::addressof(imageCreateInfo), nullptr, std::addressof(image));
             AssertVulkan(result);
         }
         // Allocate a bunch of memory for all images at one
         VkMemoryRequirements memoryRequirements;
-        pLogicalDevice->vkd.GetImageMemoryRequirements(pLogicalDevice->device, images[0], &memoryRequirements);
+        pLogicalDevice->vkd.GetImageMemoryRequirements(pLogicalDevice->device, images.front(), std::addressof(memoryRequirements));
 
         if (memoryRequirements.size % memoryRequirements.alignment != 0)
         {
             memoryRequirements.size = (memoryRequirements.size / memoryRequirements.alignment + 1) * memoryRequirements.alignment;
         }
 
-        VkMemoryAllocateInfo memoryAllocateInfo;
-        memoryAllocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        memoryAllocateInfo.pNext           = nullptr;
-        memoryAllocateInfo.allocationSize  = memoryRequirements.size * count;
-        memoryAllocateInfo.memoryTypeIndex = findMemoryTypeIndex(pLogicalDevice, memoryRequirements.memoryTypeBits, properties);
+        const VkMemoryAllocateInfo memoryAllocateInfo{.sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                                                      .pNext          = nullptr,
+                                                      .allocationSize = memoryRequirements.size * count,
+                                                      .memoryTypeIndex =
+                                                          findMemoryTypeIndex(pLogicalDevice, memoryRequirements.memoryTypeBits, properties)};
 
-        const auto result = pLogicalDevice->vkd.AllocateMemory(pLogicalDevice->device, &memoryAllocateInfo, nullptr, &imageMemory);
+        const auto result =
+            pLogicalDevice->vkd.AllocateMemory(pLogicalDevice->device, std::addressof(memoryAllocateInfo), nullptr, std::addressof(imageMemory));
         AssertVulkan(result);
 
-        for (uint32_t i = 0; i < count; i++)
+        for (auto [idx, image] : images | std::views::enumerate)
         {
-            const auto result = pLogicalDevice->vkd.BindImageMemory(pLogicalDevice->device, images[i], imageMemory, memoryRequirements.size * i);
+            const auto result = pLogicalDevice->vkd.BindImageMemory(pLogicalDevice->device, image, imageMemory, memoryRequirements.size * idx);
             AssertVulkan(result);
         }
         return images;
@@ -186,7 +252,7 @@ namespace vkBasalt
         pLogicalDevice->vkd.DestroyBuffer(pLogicalDevice->device, stagingBuffer, nullptr);
     }
 
-    void changeImageLayout(LogicalDevice* pLogicalDevice, std::vector<VkImage> images, uint32_t mipLevels)
+    void changeImageLayout(LogicalDevice* pLogicalDevice, std::span<const VkImage> images, uint32_t mipLevels)
     {
         VkCommandBufferAllocateInfo allocInfo = {};
 
@@ -223,7 +289,7 @@ namespace vkBasalt
         memoryBarrier.subresourceRange.baseArrayLayer = 0;
         memoryBarrier.subresourceRange.layerCount     = 1;
 
-        for (auto& image : images)
+        for (const auto& image : images)
         {
             memoryBarrier.image = image;
             pLogicalDevice->vkd.CmdPipelineBarrier(

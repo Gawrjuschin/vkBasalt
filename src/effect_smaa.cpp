@@ -78,25 +78,21 @@ namespace vkBasalt
 
         const VkExtent3D areaImageExtent = {.width = AREATEX_WIDTH, .height = AREATEX_HEIGHT, .depth = 1};
 
-        areaImage = createImages(pLogicalDevice,
-                                 1,
-                                 areaImageExtent,
-                                 VK_FORMAT_R8G8_UNORM, // TODO search for format and save it
-                                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                 areaMemory)
-                        .front();
+        areaImage = createImage(pLogicalDevice,
+                                areaImageExtent,
+                                VK_FORMAT_R8G8_UNORM, // TODO search for format and save it
+                                VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                areaMemory);
 
-        VkExtent3D searchImageExtent = {SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT, 1};
+        const VkExtent3D searchImageExtent = {.width = SEARCHTEX_WIDTH, .height = SEARCHTEX_HEIGHT, .depth = 1};
 
-        searchImage = createImages(pLogicalDevice,
-                                   1,
-                                   searchImageExtent,
-                                   VK_FORMAT_R8_UNORM, // TODO search for format and save it
-                                   VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                   searchMemory)
-                          .front();
+        searchImage = createImage(pLogicalDevice,
+                                  searchImageExtent,
+                                  VK_FORMAT_R8_UNORM, // TODO search for format and save it
+                                  VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                  searchMemory);
 
         uploadToImage(pLogicalDevice, areaImage, areaImageExtent, AREATEX_SIZE, areaTexBytes);
 

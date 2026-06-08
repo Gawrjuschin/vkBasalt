@@ -4,11 +4,21 @@
 #include "logical_device.hpp"
 
 #include <cstdint>
+#include <span>
 #include <vector>
+
 #include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
+    VkImage createImage(LogicalDevice*        pLogicalDevice,
+                        VkExtent3D            extent,
+                        VkFormat              format,
+                        VkImageUsageFlags     usage,
+                        VkMemoryPropertyFlags properties,
+                        VkDeviceMemory&       imageMemory,
+                        uint32_t              mipLevels = 1);
+
     std::vector<VkImage> createImages(LogicalDevice*        pLogicalDevice,
                                       uint32_t              count,
                                       VkExtent3D            extent,
@@ -21,7 +31,7 @@ namespace vkBasalt
     void uploadToImage(
         LogicalDevice* pLogicalDevice, VkImage image, VkExtent3D extent, uint32_t size, const unsigned char* writeData, uint32_t mipLevels = 1);
 
-    void changeImageLayout(LogicalDevice* pLogicalDevice, std::vector<VkImage> images, uint32_t mipLevels = 1);
+    void changeImageLayout(LogicalDevice* pLogicalDevice, std::span<const VkImage> images, uint32_t mipLevels = 1);
 
     void generateMipMaps(LogicalDevice* pLogicalDevice, VkCommandBuffer commandBuffer, VkImage image, VkExtent3D extent, uint32_t mipLevels);
 } // namespace vkBasalt
