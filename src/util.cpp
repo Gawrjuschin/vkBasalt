@@ -2,12 +2,12 @@
 
 #include <iostream>
 #include <iterator>
-#include <stdio.h>
+#include <cstdio>
 #include <string>
 #include <string_view>
-#include <cstdio>
-#include <unistd.h>
 #include <vector>
+
+#include <unistd.h>
 
 namespace vkBasalt
 {

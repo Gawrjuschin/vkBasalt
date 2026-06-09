@@ -18,9 +18,9 @@ namespace vkBasalt
 {
     namespace
     {
-        std::string_view GetFileName() noexcept
+        std::string GetFileName() noexcept
         {
-            static constexpr std::string_view defaultValue{"stderr"};
+            constexpr static auto             defaultValue{"stderr"};
             const char*                       envVar = std::getenv("VKBASALT_LOG_FILE");
 
             if (envVar == nullptr)
@@ -28,7 +28,7 @@ namespace vkBasalt
                 return defaultValue;
             }
 
-            const std::string_view value{envVar};
+            std::string value{envVar};
             if (std::empty(value))
             {
                 return defaultValue;
@@ -82,7 +82,7 @@ namespace vkBasalt
             }
             else
             {
-                m_fileStream.open(std::data(filename));
+                m_fileStream.open(filename);
                 m_outStream = std::addressof(m_fileStream);
             }
             return;

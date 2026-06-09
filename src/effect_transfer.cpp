@@ -21,11 +21,11 @@ namespace vkBasalt
 
     void TransferEffect::applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer)
     {
-        VkImageCopy imageCopy{.srcSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1},
-                              .srcOffset      = {},
-                              .dstSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1},
-                              .dstOffset      = {},
-                              .extent         = {.width = imageExtent.width, .height = imageExtent.height, .depth = 1}};
+        const VkImageCopy imageCopy{.srcSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1},
+                                    .srcOffset      = {},
+                                    .dstSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1},
+                                    .dstOffset      = {},
+                                    .extent         = {.width = imageExtent.width, .height = imageExtent.height, .depth = 1}};
 
         VkImageMemoryBarrier memoryBarrier{
             .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,

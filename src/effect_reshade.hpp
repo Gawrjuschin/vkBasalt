@@ -100,12 +100,7 @@ namespace vkBasalt
 
         std::vector<std::unique_ptr<ReshadeUniform>> uniforms;
 
-        void          createReshadeModule();
-        VkFormat      convertReshadeFormat(reshadefx::texture_format texFormat);
-        VkCompareOp   convertReshadeCompareOp(reshadefx::pass_stencil_func compareOp);
-        VkStencilOp   convertReshadeStencilOp(reshadefx::pass_stencil_op stencilOp);
-        VkBlendOp     convertReshadeBlendOp(reshadefx::pass_blend_op blendOp);
-        VkBlendFactor convertReshadeBlendFactor(reshadefx::pass_blend_func blendFactor);
+        void createReshadeModule();
     };
 } // namespace vkBasalt
 

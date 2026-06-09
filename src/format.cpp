@@ -104,7 +104,7 @@ namespace vkBasalt
 
     VkFormat getSupportedFormat(LogicalDevice* pLogicalDevice, std::span<const VkFormat> formats, VkFormatFeatureFlags features, VkImageTiling tiling)
     {
-        for (auto& format : formats)
+        for (const auto& format : formats)
         {
             VkFormatProperties properties;
             pLogicalDevice->vki.GetPhysicalDeviceFormatProperties(pLogicalDevice->physicalDevice, format, &properties);

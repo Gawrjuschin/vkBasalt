@@ -3,12 +3,25 @@
 #include <cstddef>
 #include <fstream>
 
+#include <iterator>
 #include <logger.hpp>
 #include <string>
 #include <vector>
 
 namespace vkBasalt
 {
+    namespace
+    {
+        std::string skipWhiteSpace(std::string text)
+        {
+            while (text.size() > 0 && (text[0] == ' ' || text[0] == '\t'))
+            {
+                text = text.substr(1);
+            }
+            return text;
+        }
+    } // namespace
+
     LutCube::LutCube() = default;
 
     LutCube::LutCube(const std::string& file)
@@ -28,21 +41,21 @@ namespace vkBasalt
     }
     void LutCube::parseLine(std::string line)
     {
-        if (line.length() == 0)
+        if (std::empty(line))
         {
             return;
         }
-        if (line[0] == '#')
+        if (line.front() == '#')
         {
             return;
         }
         if (line.contains("LUT_3D_SIZE"))
         {
             line = line.substr(line.find("LUT_3D_SIZE") + 11);
-            line = skipWhiteSpace(line);
+            line = skipWhiteSpace(std::move(line));
             size = std::stoi(line);
 
-            colorCube = std::vector<unsigned char>(size * size * size * 4, 255);
+            colorCube = std::vector<uint8_t>(size * size * size * 4, 0xFF);
             return;
         }
         if (line.contains("DOMAIN_MIN"))
@@ -59,8 +72,8 @@ namespace vkBasalt
         }
         if (line.find_first_of("0123456789") == 0)
         {
-            float         x, y, z;
-            unsigned char outX, outY, outZ;
+            float         x{}, y{}, z{};
+            uint8_t       outX{}, outY{}, outZ{};
             splitTripel(line, x, y, z);
             clampTripel(x, y, z, outX, outY, outZ);
             writeColor(currentX, currentY, currentZ, outX, outY, outZ);
@@ -83,43 +96,34 @@ namespace vkBasalt
         }
     }
 
-    std::string LutCube::skipWhiteSpace(std::string text)
-    {
-        while (text.size() > 0 && (text[0] == ' ' || text[0] == '\t'))
-        {
-            text = text.substr(1);
-        }
-        return text;
-    }
-
     void LutCube::splitTripel(std::string tripel, float& x, float& y, float& z)
     {
-        tripel       = skipWhiteSpace(tripel);
+        tripel       = skipWhiteSpace(std::move(tripel));
         size_t after = tripel.find_first_of(" \n");
         x            = std::stof(tripel.substr(0, after));
         tripel       = tripel.substr(after);
 
-        tripel = skipWhiteSpace(tripel);
+        tripel = skipWhiteSpace(std::move(tripel));
         after  = tripel.find_first_of(" \n");
         y      = std::stof(tripel.substr(0, after));
         tripel = tripel.substr(after);
 
-        tripel = skipWhiteSpace(tripel);
+        tripel = skipWhiteSpace(std::move(tripel));
         z      = std::stof(tripel);
     }
 
     void LutCube::clampTripel(float x, float y, float z, unsigned char& outX, unsigned char& outY, unsigned char& outZ)
     {
-        outX = (unsigned char) 255 * (x / (maxX - minX));
-        outY = (unsigned char) 255 * (y / (maxY - minY));
-        outZ = (unsigned char) 255 * (z / (maxZ - minZ));
+        outX = (uint8_t) 0xFF * (x / (maxX - minX));
+        outY = (uint8_t) 0xFF * (y / (maxY - minY));
+        outZ = (uint8_t) 0xFF * (z / (maxZ - minZ));
     }
 
     void LutCube::writeColor(int x, int y, int z, unsigned char r, unsigned char g, unsigned char b)
     {
-        static const int colorSize = 4; // 4 bytes per point in the cube, rgba
+        static constexpr int colorSize = 4; // 4 bytes per point in the cube, rgba
 
-        int locationR = (((z * size) + y) * size + x) * colorSize;
+        const int locationR = (((z * size) + y) * size + x) * colorSize;
 
         colorCube[locationR + 0] = r;
         colorCube[locationR + 1] = g;

@@ -4,12 +4,12 @@
 #include "shader_sources.hpp"
 
 #include <array>
-#include <memory>
-#include <span>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <ranges>
+#include <span>
 #include <vector>
-#include <iterator>
 
 #include <vulkan/vulkan_core.h>
 
@@ -45,8 +45,8 @@ namespace vkBasalt
         const DebandOptions debandOptions{
             .screenWidth         = static_cast<float>(imageExtent.width),
             .screenHeight        = static_cast<float>(imageExtent.height),
-            .reverseScreenWidth  = 1.0F / imageExtent.width,
-            .reverseScreenHeight = 1.0F / imageExtent.height,
+            .reverseScreenWidth  = 1.0F / static_cast<float>(imageExtent.width),
+            .reverseScreenHeight = 1.0F / static_cast<float>(imageExtent.height),
             .debandAvgdiff       = pConfig->getOption<float>("debandAvgdiff", 3.4F),
             .debandMaxdiff       = pConfig->getOption<float>("debandMaxdiff", 6.8F),
             .debandMiddiff       = pConfig->getOption<float>("debandMiddiff", 3.3F),
@@ -59,11 +59,10 @@ namespace vkBasalt
         constexpr static auto specMapEntrys{[] {
             static constexpr std::size_t               size{9}; // TODO: why 9???
             std::array<VkSpecializationMapEntry, size> specMapEntrys{};
-            for (std::size_t i{}; i < size; ++i)
+            for (auto [idx, specMapEntry] : specMapEntrys | std::views::enumerate)
             {
-                specMapEntrys[i].constantID = i;
-                specMapEntrys[i].offset     = sizeof(float) * i;
-                specMapEntrys[i].size       = sizeof(float);
+                specMapEntry = {
+                    .constantID = static_cast<uint32_t>(idx), .offset = static_cast<uint32_t>(sizeof(float) * idx), .size = sizeof(float)};
             }
             return specMapEntrys;
         }()};

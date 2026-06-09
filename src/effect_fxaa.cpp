@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <ranges>
 #include <span>
@@ -32,11 +33,9 @@ namespace vkBasalt
             constexpr static std::size_t               size{5};
             std::array<VkSpecializationMapEntry, size> specMapEntrys{}; // TODO: why 5
 
-            for (auto [i, entry] : std::views::enumerate(specMapEntrys))
+            for (auto [idx, entry] : std::views::enumerate(specMapEntrys))
             {
-                entry.constantID = i;
-                entry.offset     = sizeof(float) * i;
-                entry.size       = sizeof(float);
+                entry = {.constantID = static_cast<uint32_t>(idx), .offset = static_cast<uint32_t>(sizeof(float) * idx), .size = sizeof(float)};
             }
             return specMapEntrys;
         }()};
@@ -47,11 +46,10 @@ namespace vkBasalt
                                      static_cast<float>(imageExtent.width),
                                      static_cast<float>(imageExtent.height)};
 
-        VkSpecializationInfo fragmentSpecializationInfo;
-        fragmentSpecializationInfo.mapEntryCount = std::size(specMapEntrys);
-        fragmentSpecializationInfo.pMapEntries   = std::data(specMapEntrys);
-        fragmentSpecializationInfo.dataSize      = std::span{specData}.size_bytes();
-        fragmentSpecializationInfo.pData         = std::data(specData);
+        VkSpecializationInfo fragmentSpecializationInfo{.mapEntryCount = std::size(specMapEntrys),
+                                                        .pMapEntries   = std::data(specMapEntrys),
+                                                        .dataSize      = std::span{specData}.size_bytes(),
+                                                        .pData         = std::data(specData)};
 
         pVertexSpecInfo   = nullptr;
         pFragmentSpecInfo = std::addressof(fragmentSpecializationInfo);

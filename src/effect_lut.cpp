@@ -61,36 +61,32 @@ namespace vkBasalt
         constexpr static auto specMapEntrys{[] {
             constexpr static std::size_t               size{2};
             std::array<VkSpecializationMapEntry, size> specMapEntrys{}; // constexpr function
-            for (auto [i, entry] : std::views::enumerate(specMapEntrys))
+            for (auto [idx, entry] : std::views::enumerate(specMapEntrys))
             {
-                entry.constantID = i;
-                entry.offset     = sizeof(int32_t) * i;
-                entry.size       = sizeof(int32_t);
+                entry = {.constantID = static_cast<uint32_t>(idx), .offset = static_cast<uint32_t>(sizeof(int32_t) * idx), .size = sizeof(int32_t)};
             }
             return specMapEntrys;
         }()};
 
         std::array specData = {height, usingPNG};
 
-        VkSpecializationInfo fragmentSpecializationInfo;
-        fragmentSpecializationInfo.mapEntryCount = std::size(specMapEntrys);
-        fragmentSpecializationInfo.pMapEntries   = std::data(specMapEntrys);
-        fragmentSpecializationInfo.dataSize      = std::span{specMapEntrys}.size_bytes();
-        fragmentSpecializationInfo.pData         = std::data(specData);
+        VkSpecializationInfo fragmentSpecializationInfo{.mapEntryCount = std::size(specMapEntrys),
+                                                        .pMapEntries   = std::data(specMapEntrys),
+                                                        .dataSize      = std::span{specMapEntrys}.size_bytes(),
+                                                        .pData         = std::data(specData)};
 
         pVertexSpecInfo   = nullptr;
-        pFragmentSpecInfo = &fragmentSpecializationInfo;
+        pFragmentSpecInfo = std::addressof(fragmentSpecializationInfo);
 
         const VkExtent3D lutImageExtent{
             .width = static_cast<uint32_t>(height), .height = static_cast<uint32_t>(height), .depth = static_cast<uint32_t>(height)};
 
-        lutImage = createImages(pLogicalDevice,
-                                1,
-                                lutImageExtent,
-                                VK_FORMAT_R8G8B8A8_UNORM, // TODO search for format and save it
-                                VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                lutMemory)[0];
+        lutImage = createImage(pLogicalDevice,
+                               lutImageExtent,
+                               VK_FORMAT_R8G8B8A8_UNORM, // TODO search for format and save it
+                               VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                               lutMemory);
 
         uploadToImage(pLogicalDevice, lutImage, lutImageExtent, height * height * height * 4, pixels);
 
@@ -99,25 +95,26 @@ namespace vkBasalt
             stbi_image_free(pixels);
         }
 
-        lutImageView = createImageViews(pLogicalDevice, VK_FORMAT_R8G8B8A8_UNORM, std::span{std::addressof(lutImage), 1U}, VK_IMAGE_VIEW_TYPE_3D)[0];
+        lutImageView = createImageView(pLogicalDevice, VK_FORMAT_R8G8B8A8_UNORM, lutImage, VK_IMAGE_VIEW_TYPE_3D);
 
         lutDescriptorSetLayout = createImageSamplerDescriptorSetLayout(pLogicalDevice, 1);
         descriptorSetLayouts.push_back(lutDescriptorSetLayout);
 
-        VkDescriptorPoolSize imagePoolSize;
-        imagePoolSize.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        imagePoolSize.descriptorCount = 1;
+        VkDescriptorPoolSize imagePoolSize{.type = imagePoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                           .descriptorCount = imagePoolSize.descriptorCount = 1};
 
         lutDescriptorPool = createDescriptorPool(pLogicalDevice, std::span{std::addressof(imagePoolSize), 1U});
 
         init(pLogicalDevice, format, imageExtent, inputImages, outputImages, pConfig);
 
+        // TODO: better solution for single image view
         lutDescriptorSet =
             allocateAndWriteImageSamplerDescriptorSets(pLogicalDevice,
                                                        lutDescriptorPool,
                                                        lutDescriptorSetLayout,
                                                        {sampler},
-                                                       std::vector<std::vector<VkImageView>>(1, std::vector<VkImageView>(1, lutImageView)))[0];
+                                                       std::vector<std::vector<VkImageView>>(1, std::vector<VkImageView>(1, lutImageView)))
+                .front();
     }
 
     LutEffect::~LutEffect()
@@ -132,7 +129,7 @@ namespace vkBasalt
     void LutEffect::applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer)
     {
         pLogicalDevice->vkd.CmdBindDescriptorSets(
-            commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &(lutDescriptorSet), 0, nullptr);
+            commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, std::addressof(lutDescriptorSet), 0, nullptr);
         SimpleEffect::applyEffect(imageIndex, commandBuffer);
     }
 

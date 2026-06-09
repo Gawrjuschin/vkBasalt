@@ -1,6 +1,7 @@
 #ifndef LUT_CUBE_HPP_INCLUDED
 #define LUT_CUBE_HPP_INCLUDED
 
+#include <cstdint>
 #include <vector>
 #include <string>
 
@@ -23,7 +24,7 @@ namespace vkBasalt
     class LutCube
     {
     public:
-        std::vector<unsigned char> colorCube;
+        std::vector<uint8_t>       colorCube;
         int                        size{};
 
         LutCube(const std::string& file);
@@ -50,9 +51,6 @@ namespace vkBasalt
         void splitTripel(std::string tripel, float& x, float& y, float& z);
 
         void clampTripel(float x, float y, float z, unsigned char& outX, unsigned char& outY, unsigned char& outZ);
-
-        // returns the text without leading whitespace
-        std::string skipWhiteSpace(std::string text);
     };
 
 } // namespace vkBasalt

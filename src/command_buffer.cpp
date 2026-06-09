@@ -114,7 +114,7 @@ namespace vkBasalt
                                                        0,
                                                        nullptr,
                                                        1,
-                                                       &memoryBarrier);
+                                                       std::addressof(memoryBarrier));
             }
 
             result = pLogicalDevice->vkd.EndCommandBuffer(commandBuffer); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)

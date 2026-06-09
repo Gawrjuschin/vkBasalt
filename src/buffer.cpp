@@ -24,13 +24,11 @@ namespace vkBasalt
         VkMemoryRequirements memRequirements;
         pLogicalDevice->vkd.GetBufferMemoryRequirements(pLogicalDevice->device, buffer, std::addressof(memRequirements));
 
-        VkMemoryAllocateInfo allocInfo = {};
+        const VkMemoryAllocateInfo allocInfo = {.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                                                .allocationSize  = memRequirements.size,
+                                                .memoryTypeIndex = findMemoryTypeIndex(pLogicalDevice, memRequirements.memoryTypeBits, properties)};
 
-        allocInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize  = memRequirements.size;
-        allocInfo.memoryTypeIndex = findMemoryTypeIndex(pLogicalDevice, memRequirements.memoryTypeBits, properties);
-
-        result = pLogicalDevice->vkd.AllocateMemory(pLogicalDevice->device, &allocInfo, nullptr, &bufferMemory);
+        result = pLogicalDevice->vkd.AllocateMemory(pLogicalDevice->device, std::addressof(allocInfo), nullptr, std::addressof(bufferMemory));
         AssertVulkan(result);
 
         result = pLogicalDevice->vkd.BindBufferMemory(pLogicalDevice->device, buffer, bufferMemory, 0);

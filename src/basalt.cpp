@@ -10,6 +10,7 @@
 #include "fake_swapchain.hpp"
 #include "format.hpp"
 #include "logger.hpp"
+#include "effect.hpp"
 #include "effect_fxaa.hpp"
 #include "effect_cas.hpp"
 #include "effect_dls.hpp"
@@ -276,9 +277,10 @@ namespace vkBasalt
 
             const auto& [instanceKey, instanceData] = *instanceIt;
 
-            instanceData.dispatch.EnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
+            instanceData.dispatch.EnumerateDeviceExtensionProperties(physicalDevice, nullptr, std::addressof(extensionCount), nullptr);
             std::vector<VkExtensionProperties> extensionProperties(extensionCount);
-            instanceData.dispatch.EnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, std::data(extensionProperties));
+            instanceData.dispatch.EnumerateDeviceExtensionProperties(
+                physicalDevice, nullptr, std::addressof(extensionCount), std::data(extensionProperties));
 
             bool supportsMutableFormat = false;
             for (VkExtensionProperties properties : extensionProperties)
@@ -292,7 +294,7 @@ namespace vkBasalt
             }
 
             VkPhysicalDeviceProperties deviceProps;
-            instanceData.dispatch.GetPhysicalDeviceProperties(physicalDevice, &deviceProps);
+            instanceData.dispatch.GetPhysicalDeviceProperties(physicalDevice, std::addressof(deviceProps));
 
             VkDeviceCreateInfo       modifiedCreateInfo = *pCreateInfo;
             std::vector<const char*> enabledExtensionNames;
@@ -347,7 +349,7 @@ namespace vkBasalt
                                         .depthFormats          = {},
                                         .depthImageViews       = {}};
 
-            fillDispatchTableDevice(*pDevice, gdpa, &logicalDevice.vkd);
+            fillDispatchTableDevice(*pDevice, gdpa, std::addressof(logicalDevice.vkd));
 
             // TODO: better solution
             uint32_t count{};
@@ -360,16 +362,16 @@ namespace vkBasalt
             {
                 if ((queueProperties[queueInfo.queueFamilyIndex].queueFlags & VkQueueFlagBits::VK_QUEUE_GRAPHICS_BIT) != 0U)
                 {
-                    logicalDevice.vkd.GetDeviceQueue(logicalDevice.device, queueInfo.queueFamilyIndex, 0, &logicalDevice.queue);
+                    logicalDevice.vkd.GetDeviceQueue(logicalDevice.device, queueInfo.queueFamilyIndex, 0, std::addressof(logicalDevice.queue));
 
-                    VkCommandPoolCreateInfo commandPoolCreateInfo;
-                    commandPoolCreateInfo.sType            = VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-                    commandPoolCreateInfo.pNext            = nullptr;
-                    commandPoolCreateInfo.flags            = 0;
-                    commandPoolCreateInfo.queueFamilyIndex = queueInfo.queueFamilyIndex;
+                    const VkCommandPoolCreateInfo commandPoolCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                                                                        .pNext = nullptr,
+                                                                        .flags = 0,
+                                                                        .queueFamilyIndex = queueInfo.queueFamilyIndex};
 
                     Logger::debug("Found graphics capable queue");
-                    logicalDevice.vkd.CreateCommandPool(logicalDevice.device, &commandPoolCreateInfo, nullptr, &logicalDevice.commandPool);
+                    logicalDevice.vkd.CreateCommandPool(
+                        logicalDevice.device, std::addressof(commandPoolCreateInfo), nullptr, std::addressof(logicalDevice.commandPool));
                     logicalDevice.queueFamilyIndex = queueInfo.queueFamilyIndex;
 
                     initializeDispatchTable(logicalDevice.queue, logicalDevice.device);
@@ -622,8 +624,6 @@ namespace vkBasalt
                 }
             }
 
-            // Below does not depend on index
-
             if (!logicalDevice.supportsMutableFormat)
             {
                 logicalSwapchain.effects.emplace_back(std::make_unique<TransferEffect>(
@@ -656,10 +656,10 @@ namespace vkBasalt
 
             logicalSwapchain.semaphores = createSemaphores(std::addressof(logicalDevice), logicalSwapchain.imageCount);
             Logger::debug("created semaphores");
-            for (auto [i, commandbuffer] :
+            for (auto [idx, commandbuffer] :
                  std::views::enumerate(logicalSwapchain.commandBuffersEffect) | std::views::take(logicalSwapchain.imageCount))
             {
-                Logger::debug(std::to_string(i) + " written commandbuffer " + convertToString(commandbuffer));
+                Logger::debug(std::to_string(idx) + " written commandbuffer " + convertToString(commandbuffer));
             }
             Logger::trace("vkGetSwapchainImagesKHR");
 
@@ -680,10 +680,10 @@ namespace vkBasalt
                                 VkFormat::VK_FORMAT_UNDEFINED,
                                 logicalSwapchain.commandBuffersNoEffect);
 
-            for (auto [i, commandbuffer] :
+            for (auto [idx, commandbuffer] :
                  std::views::enumerate(logicalSwapchain.commandBuffersNoEffect) | std::views::take(logicalSwapchain.imageCount))
             {
-                Logger::debug(std::to_string(i) + " written commandbuffer no effect " + convertToString(commandbuffer));
+                Logger::debug(std::to_string(idx) + " written commandbuffer no effect " + convertToString(commandbuffer));
             }
 
             *pCount = std::min<uint32_t>(*pCount, logicalSwapchain.imageCount);
@@ -730,7 +730,7 @@ namespace vkBasalt
 
             for (uint32_t i = 0; i < pPresentInfo->swapchainCount; ++i)
             {
-                const uint32_t index     = pPresentInfo->pImageIndices[i];
+                const uint32_t imageIndex = pPresentInfo->pImageIndices[i];
                 VkSwapchainKHR swapchain = pPresentInfo->pSwapchains[i];
 
                 const auto logicalSwapchainIt = state.swapchainMap.find(swapchain);
@@ -749,12 +749,12 @@ namespace vkBasalt
                                         .pWaitSemaphores      = (i == 0) ? pPresentInfo->pWaitSemaphores : nullptr,
                                         .pWaitDstStageMask    = (i == 0) ? std::data(waitStages) : nullptr,
                                         .commandBufferCount   = 1,
-                                        .pCommandBuffers      = presentEffect ? std::addressof(logicalSwapchain.commandBuffersEffect[index])
-                                                                              : std::addressof(logicalSwapchain.commandBuffersNoEffect[index]),
+                                        .pCommandBuffers      = presentEffect ? std::addressof(logicalSwapchain.commandBuffersEffect[imageIndex])
+                                                                              : std::addressof(logicalSwapchain.commandBuffersNoEffect[imageIndex]),
                                         .signalSemaphoreCount = 1,
-                                        .pSignalSemaphores    = std::addressof(logicalSwapchain.semaphores[index])};
+                                        .pSignalSemaphores    = std::addressof(logicalSwapchain.semaphores[imageIndex])};
 
-                presentSemaphores.emplace_back(logicalSwapchain.semaphores[index]);
+                presentSemaphores.emplace_back(logicalSwapchain.semaphores[imageIndex]);
 
                 const auto res = logicalDevice.vkd.QueueSubmit(logicalDevice.queue, 1, std::addressof(submitInfo), VK_NULL_HANDLE);
 
@@ -788,7 +788,7 @@ namespace vkBasalt
 
             Logger::trace("vkDestroySwapchainKHR " + convertToString(swapchain));
 
-            if (const auto node = state.swapchainMap.extract(swapchain); node)
+            if (const auto node = state.swapchainMap.extract(swapchain))
             {
                 node.mapped().destroy();
             }
@@ -856,11 +856,11 @@ namespace vkBasalt
             if (not std::empty(logicalDevice.depthImages) && image == logicalDevice.depthImages.back())
             {
                 Logger::debug("before creating depth image view");
-                VkImageView depthImageView = createImageViews(std::addressof(logicalDevice),
-                                                              logicalDevice.depthFormats.back(),
-                                                              std::span{std::addressof(image), 1U},
-                                                              VkImageViewType::VK_IMAGE_VIEW_TYPE_2D,
-                                                              VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT)[0];
+                VkImageView depthImageView = createImageView(std::addressof(logicalDevice),
+                                                             logicalDevice.depthFormats.back(),
+                                                             image,
+                                                             VkImageViewType::VK_IMAGE_VIEW_TYPE_2D,
+                                                             VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT);
 
                 const auto depthFormat = logicalDevice.depthFormats.back();
 

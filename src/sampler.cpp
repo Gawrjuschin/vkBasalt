@@ -11,24 +11,24 @@ namespace vkBasalt
     {
         VkSampler sampler{};
 
-        VkSamplerCreateInfo samplerCreateInfo{.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-                                              .pNext                   = nullptr,
-                                              .flags                   = 0,
-                                              .magFilter               = VK_FILTER_LINEAR,
-                                              .minFilter               = VK_FILTER_LINEAR,
-                                              .mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-                                              .addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-                                              .addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-                                              .addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-                                              .mipLodBias              = 0.0F,
-                                              .anisotropyEnable        = VK_FALSE,
-                                              .maxAnisotropy           = 16,
-                                              .compareEnable           = VK_FALSE,
-                                              .compareOp               = VK_COMPARE_OP_ALWAYS,
-                                              .minLod                  = 0.0F,
-                                              .maxLod                  = 0.0F,
-                                              .borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-                                              .unnormalizedCoordinates = VK_FALSE};
+        const VkSamplerCreateInfo samplerCreateInfo{.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+                                                    .pNext                   = nullptr,
+                                                    .flags                   = 0,
+                                                    .magFilter               = VK_FILTER_LINEAR,
+                                                    .minFilter               = VK_FILTER_LINEAR,
+                                                    .mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+                                                    .addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                                    .addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                                    .addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                                    .mipLodBias              = 0.0F,
+                                                    .anisotropyEnable        = VK_FALSE,
+                                                    .maxAnisotropy           = 16,
+                                                    .compareEnable           = VK_FALSE,
+                                                    .compareOp               = VK_COMPARE_OP_ALWAYS,
+                                                    .minLod                  = 0.0F,
+                                                    .maxLod                  = 0.0F,
+                                                    .borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+                                                    .unnormalizedCoordinates = VK_FALSE};
 
         const auto result =
             pLogicalDevice->vkd.CreateSampler(pLogicalDevice->device, std::addressof(samplerCreateInfo), nullptr, std::addressof(sampler));
@@ -45,24 +45,24 @@ namespace vkBasalt
         VkSamplerMipmapMode mipmapMode{};
         convertReshadeFilter(samplerInfo.filter, minFilter, magFilter, mipmapMode);
 
-        VkSamplerCreateInfo samplerCreateInfo{.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-                                              .pNext                   = nullptr,
-                                              .flags                   = 0,
-                                              .magFilter               = magFilter,
-                                              .minFilter               = minFilter,
-                                              .mipmapMode              = mipmapMode,
-                                              .addressModeU            = convertReshadeAddressMode(samplerInfo.address_u),
-                                              .addressModeV            = convertReshadeAddressMode(samplerInfo.address_v),
-                                              .addressModeW            = convertReshadeAddressMode(samplerInfo.address_w),
-                                              .mipLodBias              = samplerInfo.lod_bias,
-                                              .anisotropyEnable        = VK_FALSE,
-                                              .maxAnisotropy           = 16,
-                                              .compareEnable           = VK_FALSE,
-                                              .compareOp               = VK_COMPARE_OP_ALWAYS,
-                                              .minLod                  = samplerInfo.min_lod,
-                                              .maxLod                  = samplerInfo.max_lod,
-                                              .borderColor             = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
-                                              .unnormalizedCoordinates = VK_FALSE};
+        const VkSamplerCreateInfo samplerCreateInfo{.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+                                                    .pNext                   = nullptr,
+                                                    .flags                   = 0,
+                                                    .magFilter               = magFilter,
+                                                    .minFilter               = minFilter,
+                                                    .mipmapMode              = mipmapMode,
+                                                    .addressModeU            = convertReshadeAddressMode(samplerInfo.address_u),
+                                                    .addressModeV            = convertReshadeAddressMode(samplerInfo.address_v),
+                                                    .addressModeW            = convertReshadeAddressMode(samplerInfo.address_w),
+                                                    .mipLodBias              = samplerInfo.lod_bias,
+                                                    .anisotropyEnable        = VK_FALSE,
+                                                    .maxAnisotropy           = 16,
+                                                    .compareEnable           = VK_FALSE,
+                                                    .compareOp               = VK_COMPARE_OP_ALWAYS,
+                                                    .minLod                  = samplerInfo.min_lod,
+                                                    .maxLod                  = samplerInfo.max_lod,
+                                                    .borderColor             = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
+                                                    .unnormalizedCoordinates = VK_FALSE};
 
         const auto result =
             pLogicalDevice->vkd.CreateSampler(pLogicalDevice->device, std::addressof(samplerCreateInfo), nullptr, std::addressof(sampler));

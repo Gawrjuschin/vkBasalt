@@ -21,44 +21,41 @@ namespace vkBasalt
     VkDescriptorPool createDescriptorPool(LogicalDevice* pLogicalDevice, std::span<const VkDescriptorPoolSize> poolSizes)
     {
 
-        VkDescriptorPool descriptorPool{};
-
         const auto setCount{
             std::ranges::fold_left(poolSizes | std::views::transform(&VkDescriptorPoolSize::descriptorCount), 0U, std::plus<uint32_t>{})};
 
-        VkDescriptorPoolCreateInfo descriptorPoolCreateInfo;
-        descriptorPoolCreateInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        descriptorPoolCreateInfo.pNext         = nullptr;
-        descriptorPoolCreateInfo.flags         = 0;
-        descriptorPoolCreateInfo.maxSets       = setCount;
-        descriptorPoolCreateInfo.poolSizeCount = std::size(poolSizes);
-        descriptorPoolCreateInfo.pPoolSizes    = std::data(poolSizes);
+        const VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+                                                                  .pNext         = nullptr,
+                                                                  .flags         = 0,
+                                                                  .maxSets       = setCount,
+                                                                  .poolSizeCount = static_cast<uint32_t>(std::size(poolSizes)),
+                                                                  .pPoolSizes    = std::data(poolSizes)};
 
-        const auto result = pLogicalDevice->vkd.CreateDescriptorPool(pLogicalDevice->device, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
+        VkDescriptorPool descriptorPool{};
+        const auto       result = pLogicalDevice->vkd.CreateDescriptorPool(
+            pLogicalDevice->device, std::addressof(descriptorPoolCreateInfo), nullptr, std::addressof(descriptorPool));
         AssertVulkan(result);
         return descriptorPool;
     }
 
     VkDescriptorSetLayout createUniformBufferDescriptorSetLayout(LogicalDevice* pLogicalDevice)
     {
+
+        const VkDescriptorSetLayoutBinding descriptorSetLayoutBinding{.binding            = 0,
+                                                                      .descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                                      .descriptorCount    = 1,
+                                                                      .stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT,
+                                                                      .pImmutableSamplers = nullptr};
+
+        const VkDescriptorSetLayoutCreateInfo descriptorSetCreateInfo{.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                                                                      .pNext        = nullptr,
+                                                                      .flags        = 0,
+                                                                      .bindingCount = 1,
+                                                                      .pBindings    = std::addressof(descriptorSetLayoutBinding)};
+
         VkDescriptorSetLayout descriptorSetLayout{};
-
-        VkDescriptorSetLayoutBinding descriptorSetLayoutBinding;
-        descriptorSetLayoutBinding.binding            = 0;
-        descriptorSetLayoutBinding.descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorSetLayoutBinding.descriptorCount    = 1;
-        descriptorSetLayoutBinding.stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT;
-        descriptorSetLayoutBinding.pImmutableSamplers = nullptr;
-
-        VkDescriptorSetLayoutCreateInfo descriptorSetCreateInfo;
-        descriptorSetCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        descriptorSetCreateInfo.pNext        = nullptr;
-        descriptorSetCreateInfo.flags        = 0;
-        descriptorSetCreateInfo.bindingCount = 1;
-        descriptorSetCreateInfo.pBindings    = &descriptorSetLayoutBinding;
-
-        const auto result =
-            pLogicalDevice->vkd.CreateDescriptorSetLayout(pLogicalDevice->device, &descriptorSetCreateInfo, nullptr, &descriptorSetLayout);
+        const auto            result = pLogicalDevice->vkd.CreateDescriptorSetLayout(
+            pLogicalDevice->device, std::addressof(descriptorSetCreateInfo), nullptr, std::addressof(descriptorSetLayout));
         AssertVulkan(result);
 
         return descriptorSetLayout;
@@ -71,36 +68,31 @@ namespace vkBasalt
     {
         VkDescriptorSet descriptorSet{};
 
-        VkDescriptorSetAllocateInfo descriptorSetAllocateInfo;
-        descriptorSetAllocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        descriptorSetAllocateInfo.pNext              = nullptr;
-        descriptorSetAllocateInfo.descriptorPool     = descriptorPool;
-        descriptorSetAllocateInfo.descriptorSetCount = 1;
-        descriptorSetAllocateInfo.pSetLayouts        = &descriptorSetLayout;
+        const VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                                                                    .pNext              = nullptr,
+                                                                    .descriptorPool     = descriptorPool,
+                                                                    .descriptorSetCount = 1,
+                                                                    .pSetLayouts        = std::addressof(descriptorSetLayout)};
 
-        const auto result = pLogicalDevice->vkd.AllocateDescriptorSets(pLogicalDevice->device, &descriptorSetAllocateInfo, &descriptorSet);
+        const auto result = pLogicalDevice->vkd.AllocateDescriptorSets(
+            pLogicalDevice->device, std::addressof(descriptorSetAllocateInfo), std::addressof(descriptorSet));
         AssertVulkan(result);
 
-        VkDescriptorBufferInfo bufferInfo;
-        bufferInfo.buffer = buffer;
-        bufferInfo.offset = 0;
-        bufferInfo.range  = VK_WHOLE_SIZE;
+        const VkDescriptorBufferInfo bufferInfo{.buffer = buffer, .offset = 0, .range = VK_WHOLE_SIZE};
 
-        VkWriteDescriptorSet writeDescriptorSet = {};
-
-        writeDescriptorSet.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSet.pNext            = nullptr;
-        writeDescriptorSet.dstSet           = descriptorSet;
-        writeDescriptorSet.dstBinding       = 0;
-        writeDescriptorSet.dstArrayElement  = 0;
-        writeDescriptorSet.descriptorCount  = 1;
-        writeDescriptorSet.descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        writeDescriptorSet.pImageInfo       = nullptr;
-        writeDescriptorSet.pBufferInfo      = &bufferInfo;
-        writeDescriptorSet.pTexelBufferView = nullptr;
+        const VkWriteDescriptorSet writeDescriptorSet{.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                                      .pNext            = nullptr,
+                                                      .dstSet           = descriptorSet,
+                                                      .dstBinding       = 0,
+                                                      .dstArrayElement  = 0,
+                                                      .descriptorCount  = 1,
+                                                      .descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                      .pImageInfo       = nullptr,
+                                                      .pBufferInfo      = std::addressof(bufferInfo),
+                                                      .pTexelBufferView = nullptr};
 
         Logger::debug("before writing buffer descriptor Sets");
-        pLogicalDevice->vkd.UpdateDescriptorSets(pLogicalDevice->device, 1, &writeDescriptorSet, 0, nullptr);
+        pLogicalDevice->vkd.UpdateDescriptorSets(pLogicalDevice->device, 1, std::addressof(writeDescriptorSet), 0, nullptr);
 
         return descriptorSet;
     }
@@ -110,26 +102,23 @@ namespace vkBasalt
         VkDescriptorSetLayout descriptorSetLayout{};
 
         std::vector<VkDescriptorSetLayoutBinding> bindigs(count);
-        for (uint32_t i = 0; i < count; i++)
+        for (auto [idx, bindig] : bindigs | std::views::enumerate)
         {
-            VkDescriptorSetLayoutBinding descriptorSetLayoutBinding;
-            descriptorSetLayoutBinding.binding            = i;
-            descriptorSetLayoutBinding.descriptorType     = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            descriptorSetLayoutBinding.descriptorCount    = 1;
-            descriptorSetLayoutBinding.stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT;
-            descriptorSetLayoutBinding.pImmutableSamplers = nullptr;
-            bindigs[i]                                    = descriptorSetLayoutBinding;
+            bindig = {.binding            = static_cast<uint32_t>(idx),
+                      .descriptorType     = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                      .descriptorCount    = 1,
+                      .stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT,
+                      .pImmutableSamplers = nullptr};
         }
 
-        VkDescriptorSetLayoutCreateInfo descriptorSetCreateInfo;
-        descriptorSetCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        descriptorSetCreateInfo.pNext        = nullptr;
-        descriptorSetCreateInfo.flags        = 0;
-        descriptorSetCreateInfo.bindingCount = count;
-        descriptorSetCreateInfo.pBindings    = bindigs.data();
+        const VkDescriptorSetLayoutCreateInfo descriptorSetCreateInfo{.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                                                                      .pNext        = nullptr,
+                                                                      .flags        = 0,
+                                                                      .bindingCount = static_cast<uint32_t>(std::size(bindigs)),
+                                                                      .pBindings    = std::data(bindigs)};
 
-        const auto result =
-            pLogicalDevice->vkd.CreateDescriptorSetLayout(pLogicalDevice->device, &descriptorSetCreateInfo, nullptr, &descriptorSetLayout);
+        const auto result = pLogicalDevice->vkd.CreateDescriptorSetLayout(
+            pLogicalDevice->device, std::addressof(descriptorSetCreateInfo), nullptr, std::addressof(descriptorSetLayout));
         AssertVulkan(result);
         return descriptorSetLayout;
     }
@@ -142,19 +131,17 @@ namespace vkBasalt
     {
         std::vector<VkDescriptorSet> descriptorSets(std::size(imageViewsVectors.front()));
 
-        std::vector<VkDescriptorSetLayout> layouts(descriptorSets.size(), descriptorSetLayout);
-        VkDescriptorSetAllocateInfo        descriptorSetAllocateInfo;
-        descriptorSetAllocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        descriptorSetAllocateInfo.pNext              = nullptr;
-        descriptorSetAllocateInfo.descriptorPool     = descriptorPool;
-        descriptorSetAllocateInfo.descriptorSetCount = descriptorSets.size();
-        descriptorSetAllocateInfo.pSetLayouts        = layouts.data();
+        std::vector<VkDescriptorSetLayout> layouts(std::size(descriptorSets), descriptorSetLayout);
+        const VkDescriptorSetAllocateInfo  descriptorSetAllocateInfo{.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                                                                     .pNext              = nullptr,
+                                                                     .descriptorPool     = descriptorPool,
+                                                                     .descriptorSetCount = static_cast<uint32_t>(std::size(descriptorSets)),
+                                                                     .pSetLayouts        = std::data(layouts)};
 
         Logger::debug("before allocating descriptor Sets");
-        const auto result = pLogicalDevice->vkd.AllocateDescriptorSets(pLogicalDevice->device, &descriptorSetAllocateInfo, descriptorSets.data());
+        const auto result =
+            pLogicalDevice->vkd.AllocateDescriptorSets(pLogicalDevice->device, std::addressof(descriptorSetAllocateInfo), std::data(descriptorSets));
         AssertVulkan(result);
-
-        ;
 
         std::vector<VkDescriptorImageInfo> imageInfos(
             std::size(imageViewsVectors),

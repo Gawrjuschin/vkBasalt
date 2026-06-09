@@ -10,7 +10,7 @@ namespace vkBasalt
 {
     void createShaderModule(LogicalDevice* pLogicalDevice, std::span<const uint32_t> code, VkShaderModule* shaderModule)
     {
-        VkShaderModuleCreateInfo shaderCreateInfo{
+        const VkShaderModuleCreateInfo shaderCreateInfo{
             .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext    = nullptr,
             .flags    = 0,

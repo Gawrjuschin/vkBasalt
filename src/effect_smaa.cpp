@@ -15,13 +15,16 @@
 #include <Textures/AreaTex.h>
 #include <Textures/SearchTex.h>
 
+#include <logger.hpp>
+
 #include <iterator>
 #include <cstdint>
-#include <logger.hpp>
 #include <memory>
-#include <vulkan/vulkan_core.h>
+#include <ranges>
 #include <span>
 #include <vector>
+
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
@@ -113,7 +116,7 @@ namespace vkBasalt
         descriptorPool = createDescriptorPool(pLogicalDevice, std::span{std::addressof(imagePoolSize), 1U});
         Logger::debug("created descriptorPool");
 
-        SmaaOptions smaaOptions{
+        const SmaaOptions smaaOptions{
             .screenWidth         = static_cast<float>(imageExtent.width),
             .screenHeight        = static_cast<float>(imageExtent.height),
             .reverseScreenWidth  = 1.0F / imageExtent.width,
@@ -128,8 +131,8 @@ namespace vkBasalt
 
         bool useColor = pConfig->getOption<std::string>("smaaEdgeDetection", "luma") == "color";
 
-        useColor ? createShaderModule(pLogicalDevice, smaa_edge_color_frag, &edgeFragmentModule)
-                 : createShaderModule(pLogicalDevice, smaa_edge_luma_frag, &edgeFragmentModule);
+        useColor ? createShaderModule(pLogicalDevice, smaa_edge_color_frag, std::addressof(edgeFragmentModule))
+                 : createShaderModule(pLogicalDevice, smaa_edge_luma_frag, std::addressof(edgeFragmentModule));
 
         createShaderModule(pLogicalDevice, smaa_blend_vert, &blendVertexModule);
 
@@ -141,30 +144,31 @@ namespace vkBasalt
 
         renderPass      = createRenderPass(pLogicalDevice, format);
         unormRenderPass = createRenderPass(pLogicalDevice, VK_FORMAT_B8G8R8A8_UNORM);
+        pipelineLayout  = createGraphicsPipelineLayout(pLogicalDevice, std::span{std::addressof(imageSamplerDescriptorSetLayout), 1U});
 
-        std::vector<VkDescriptorSetLayout> descriptorSetLayouts = {imageSamplerDescriptorSetLayout};
-        pipelineLayout                                          = createGraphicsPipelineLayout(pLogicalDevice, descriptorSetLayouts);
+        constexpr static auto specMapEntrys{[]() {
+            std::array<VkSpecializationMapEntry, 8U> specMapEntrys{}; // TODO: why 8
+            for (auto [idx, specMapEntry] : specMapEntrys | std::views::enumerate)
+            {
+                specMapEntrys[idx] = {
+                    .constantID = static_cast<uint32_t>(idx),
+                    .offset     = static_cast<uint32_t>(sizeof(float) * idx), // TODO not clean to assume that sizeof(int32_t) == sizeof(float)
+                    .size       = sizeof(float)};
+            }
+            return specMapEntrys;
+        }()};
 
-        std::array<VkSpecializationMapEntry, 8U> specMapEntrys{}; // TODO: why 8
-        for (uint32_t i = 0; i < std::size(specMapEntrys); ++i)
-        {
-            specMapEntrys[i].constantID = i;
-            specMapEntrys[i].offset     = sizeof(float) * i; // TODO not clean to assume that sizeof(int32_t) == sizeof(float)
-            specMapEntrys[i].size       = sizeof(float);
-        }
-
-        VkSpecializationInfo specializationInfo;
-        specializationInfo.mapEntryCount = std::size(specMapEntrys);
-        specializationInfo.pMapEntries   = std::data(specMapEntrys);
-        specializationInfo.dataSize      = sizeof(SmaaOptions);
-        specializationInfo.pData         = std::addressof(smaaOptions);
+        VkSpecializationInfo specializationInfo{.mapEntryCount = std::size(specMapEntrys),
+                                                .pMapEntries   = std::data(specMapEntrys),
+                                                .dataSize      = sizeof(SmaaOptions),
+                                                .pData         = std::addressof(smaaOptions)};
 
         edgePipeline = createGraphicsPipeline(pLogicalDevice,
                                               edgeVertexModule,
-                                              &specializationInfo,
+                                              std::addressof(specializationInfo),
                                               "main",
                                               edgeFragmentModule,
-                                              &specializationInfo,
+                                              std::addressof(specializationInfo),
                                               "main",
                                               imageExtent,
                                               unormRenderPass,
@@ -172,10 +176,10 @@ namespace vkBasalt
 
         blendPipeline = createGraphicsPipeline(pLogicalDevice,
                                                blendVertexModule,
-                                               &specializationInfo,
+                                               std::addressof(specializationInfo),
                                                "main",
                                                blendFragmentModule,
-                                               &specializationInfo,
+                                               std::addressof(specializationInfo),
                                                "main",
                                                imageExtent,
                                                unormRenderPass,
@@ -183,10 +187,10 @@ namespace vkBasalt
 
         neighborPipeline = createGraphicsPipeline(pLogicalDevice,
                                                   neighborVertexModule,
-                                                  &specializationInfo,
+                                                  std::addressof(specializationInfo),
                                                   "main",
                                                   neignborFragmentModule,
-                                                  &specializationInfo,
+                                                  std::addressof(specializationInfo),
                                                   "main",
                                                   imageExtent,
                                                   renderPass,
@@ -212,62 +216,58 @@ namespace vkBasalt
     {
         Logger::debug("applying smaa effect to cb " + convertToString(commandBuffer));
         // Used to make the Image accessable by the shader
-        VkImageMemoryBarrier memoryBarrier;
-        memoryBarrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        memoryBarrier.pNext               = nullptr;
-        memoryBarrier.srcAccessMask       = VK_ACCESS_MEMORY_WRITE_BIT;
-        memoryBarrier.dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
-        memoryBarrier.oldLayout           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        memoryBarrier.newLayout           = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        memoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        memoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        memoryBarrier.image               = inputImages[imageIndex];
-
-        memoryBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        memoryBarrier.subresourceRange.baseMipLevel   = 0;
-        memoryBarrier.subresourceRange.levelCount     = 1;
-        memoryBarrier.subresourceRange.baseArrayLayer = 0;
-        memoryBarrier.subresourceRange.layerCount     = 1;
+        VkImageMemoryBarrier memoryBarrier{
+            .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext               = nullptr,
+            .srcAccessMask       = VK_ACCESS_MEMORY_WRITE_BIT,
+            .dstAccessMask       = VK_ACCESS_SHADER_READ_BIT,
+            .oldLayout           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .newLayout           = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image               = inputImages[imageIndex],
+            .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1}};
 
         // Reverses the first Barrier
-        VkImageMemoryBarrier secondBarrier;
-        secondBarrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        secondBarrier.pNext               = nullptr;
-        secondBarrier.srcAccessMask       = VK_ACCESS_SHADER_READ_BIT;
-        secondBarrier.dstAccessMask       = 0;
-        secondBarrier.oldLayout           = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        secondBarrier.newLayout           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        secondBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        secondBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        secondBarrier.image               = inputImages[imageIndex];
+        const VkImageMemoryBarrier secondBarrier{
+            .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext               = nullptr,
+            .srcAccessMask       = VK_ACCESS_SHADER_READ_BIT,
+            .dstAccessMask       = 0,
+            .oldLayout           = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .newLayout           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image               = inputImages[imageIndex],
+            .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1}};
 
-        secondBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        secondBarrier.subresourceRange.baseMipLevel   = 0;
-        secondBarrier.subresourceRange.levelCount     = 1;
-        secondBarrier.subresourceRange.baseArrayLayer = 0;
-        secondBarrier.subresourceRange.layerCount     = 1;
-
-        pLogicalDevice->vkd.CmdPipelineBarrier(
-            commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
+        pLogicalDevice->vkd.CmdPipelineBarrier(commandBuffer,
+                                               VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                               VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                               0,
+                                               0,
+                                               nullptr,
+                                               0,
+                                               nullptr,
+                                               1,
+                                               std::addressof(memoryBarrier));
         Logger::debug("after the first pipeline barrier");
 
-        VkRenderPassBeginInfo renderPassBeginInfo;
-        renderPassBeginInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassBeginInfo.pNext             = nullptr;
-        renderPassBeginInfo.renderPass        = unormRenderPass;
-        renderPassBeginInfo.framebuffer       = edgeFramebuffers[imageIndex];
-        renderPassBeginInfo.renderArea.offset = {0, 0};
-        renderPassBeginInfo.renderArea.extent = imageExtent;
-        VkClearValue clearValue               = {0.0F, 0.0F, 0.0F, 1.0F};
-        renderPassBeginInfo.clearValueCount   = 1;
-        renderPassBeginInfo.pClearValues      = &clearValue;
+        const VkClearValue    clearValue = {0.0F, 0.0F, 0.0F, 1.0F};
+        VkRenderPassBeginInfo renderPassBeginInfo{.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                                                  .pNext           = nullptr,
+                                                  .renderPass      = unormRenderPass,
+                                                  .framebuffer     = edgeFramebuffers[imageIndex],
+                                                  .renderArea      = {.offset = {0, 0}, .extent = imageExtent},
+                                                  .clearValueCount = 1,
+                                                  .pClearValues    = std::addressof(clearValue)};
         // edge renderPass
         Logger::debug("before beginn edge renderpass");
-        pLogicalDevice->vkd.CmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        pLogicalDevice->vkd.CmdBeginRenderPass(commandBuffer, std::addressof(renderPassBeginInfo), VK_SUBPASS_CONTENTS_INLINE);
         Logger::debug("after beginn renderpass");
 
         pLogicalDevice->vkd.CmdBindDescriptorSets(
-            commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &(imageDescriptorSets[imageIndex]), 0, nullptr);
+            commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, std::addressof(imageDescriptorSets[imageIndex]), 0, nullptr);
         Logger::debug("after binding image sampler");
 
         pLogicalDevice->vkd.CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, edgePipeline);
@@ -282,8 +282,16 @@ namespace vkBasalt
         memoryBarrier.image             = edgeImages[imageIndex];
         renderPassBeginInfo.framebuffer = blendFramebuffers[imageIndex];
         // blend renderPass
-        pLogicalDevice->vkd.CmdPipelineBarrier(
-            commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
+        pLogicalDevice->vkd.CmdPipelineBarrier(commandBuffer,
+                                               VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                               VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                               0,
+                                               0,
+                                               nullptr,
+                                               0,
+                                               nullptr,
+                                               1,
+                                               std::addressof(memoryBarrier));
         Logger::debug("after the first pipeline barrier");
 
         Logger::debug("before beginn blend renderpass");
@@ -329,7 +337,7 @@ namespace vkBasalt
                                                0,
                                                nullptr,
                                                1,
-                                               &secondBarrier);
+                                               std::addressof(secondBarrier));
         Logger::debug("after the second pipeline barrier");
     }
     SmaaEffect::~SmaaEffect()
@@ -356,7 +364,7 @@ namespace vkBasalt
         pLogicalDevice->vkd.FreeMemory(pLogicalDevice->device, areaMemory, nullptr);
         pLogicalDevice->vkd.FreeMemory(pLogicalDevice->device, searchMemory, nullptr);
 
-        for (uint32_t i = 0; i < edgeFramebuffers.size(); ++i)
+        for (uint32_t i = 0; i < std::size(edgeFramebuffers); ++i)
         {
             pLogicalDevice->vkd.DestroyFramebuffer(pLogicalDevice->device, edgeFramebuffers[i], nullptr);
             pLogicalDevice->vkd.DestroyFramebuffer(pLogicalDevice->device, blendFramebuffers[i], nullptr);

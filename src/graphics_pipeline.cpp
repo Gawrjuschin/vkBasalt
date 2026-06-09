@@ -2,6 +2,9 @@
 #include "logical_device.hpp"
 #include "vulkan_include.hpp"
 
+#include <array>
+#include <iterator>
+#include <memory>
 #include <string>
 #include <span>
 
@@ -21,7 +24,8 @@ namespace vkBasalt
         pipelineLayoutCreateInfo.pPushConstantRanges    = nullptr;
 
         VkPipelineLayout pipelineLayout{};
-        const auto result = pLogicalDevice->vkd.CreatePipelineLayout(pLogicalDevice->device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
+        const auto       result = pLogicalDevice->vkd.CreatePipelineLayout(
+            pLogicalDevice->device, std::addressof(pipelineLayoutCreateInfo), nullptr, std::addressof(pipelineLayout));
         AssertVulkan(result);
         return pipelineLayout;
     }
@@ -42,145 +46,127 @@ namespace vkBasalt
 
         VkPipeline pipeline{};
 
-        VkPipelineShaderStageCreateInfo shaderStageCreateInfoVert;
-        shaderStageCreateInfoVert.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        shaderStageCreateInfoVert.pNext               = nullptr;
-        shaderStageCreateInfoVert.flags               = 0;
-        shaderStageCreateInfoVert.stage               = VK_SHADER_STAGE_VERTEX_BIT;
-        shaderStageCreateInfoVert.module              = vertexModule;
-        shaderStageCreateInfoVert.pName               = vertexEntryPoint.c_str();
-        shaderStageCreateInfoVert.pSpecializationInfo = vertexSpecializationInfo;
+        const VkPipelineShaderStageCreateInfo shaderStageCreateInfoVert{.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                                                                        .pNext               = nullptr,
+                                                                        .flags               = 0,
+                                                                        .stage               = VK_SHADER_STAGE_VERTEX_BIT,
+                                                                        .module              = vertexModule,
+                                                                        .pName               = vertexEntryPoint.c_str(),
+                                                                        .pSpecializationInfo = vertexSpecializationInfo};
 
-        VkPipelineShaderStageCreateInfo shaderStageCreateInfoFrag;
-        shaderStageCreateInfoFrag.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        shaderStageCreateInfoFrag.pNext               = nullptr;
-        shaderStageCreateInfoFrag.flags               = 0;
-        shaderStageCreateInfoFrag.stage               = VK_SHADER_STAGE_FRAGMENT_BIT;
-        shaderStageCreateInfoFrag.module              = fragmentModule;
-        shaderStageCreateInfoFrag.pName               = fragmentEntryPoint.c_str();
-        shaderStageCreateInfoFrag.pSpecializationInfo = fragmentSpecializationInfo;
+        const VkPipelineShaderStageCreateInfo shaderStageCreateInfoFrag{.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                                                                        .pNext               = nullptr,
+                                                                        .flags               = 0,
+                                                                        .stage               = VK_SHADER_STAGE_FRAGMENT_BIT,
+                                                                        .module              = fragmentModule,
+                                                                        .pName               = fragmentEntryPoint.c_str(),
+                                                                        .pSpecializationInfo = fragmentSpecializationInfo};
 
-        VkPipelineShaderStageCreateInfo shaderStages[] = {shaderStageCreateInfoVert, shaderStageCreateInfoFrag};
+        const std::array shaderStages{shaderStageCreateInfoVert, shaderStageCreateInfoFrag};
 
-        VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo;
-        vertexInputCreateInfo.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertexInputCreateInfo.pNext                           = nullptr;
-        vertexInputCreateInfo.flags                           = 0;
-        vertexInputCreateInfo.vertexBindingDescriptionCount   = 0;
-        vertexInputCreateInfo.pVertexBindingDescriptions      = nullptr;
-        vertexInputCreateInfo.vertexAttributeDescriptionCount = 0;
-        vertexInputCreateInfo.pVertexAttributeDescriptions    = nullptr;
+        VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+                                                                   .pNext = nullptr,
+                                                                   .flags = 0,
+                                                                   .vertexBindingDescriptionCount   = 0,
+                                                                   .pVertexBindingDescriptions      = nullptr,
+                                                                   .vertexAttributeDescriptionCount = 0,
+                                                                   .pVertexAttributeDescriptions    = nullptr};
 
-        VkPipelineInputAssemblyStateCreateInfo inputAssemblyCreateInfo;
-        inputAssemblyCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        inputAssemblyCreateInfo.pNext                  = nullptr;
-        inputAssemblyCreateInfo.flags                  = 0;
-        inputAssemblyCreateInfo.topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        inputAssemblyCreateInfo.primitiveRestartEnable = VK_FALSE;
+        VkPipelineInputAssemblyStateCreateInfo inputAssemblyCreateInfo{.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+                                                                       .pNext    = nullptr,
+                                                                       .flags    = 0,
+                                                                       .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                                                                       .primitiveRestartEnable = VK_FALSE};
 
-        VkViewport viewport;
-        viewport.x        = 0.0F;
-        viewport.y        = flip ? static_cast<float>(extent.height) : 0.0F;
-        viewport.width    = static_cast<float>(extent.width);
-        viewport.height   = flip ? -static_cast<float>(extent.height) : static_cast<float>(extent.height);
-        viewport.minDepth = 0.0F;
-        viewport.maxDepth = 1.0F;
+        VkViewport viewport{.x        = 0.0F,
+                            .y        = flip ? static_cast<float>(extent.height) : 0.0F,
+                            .width    = static_cast<float>(extent.width),
+                            .height   = flip ? -static_cast<float>(extent.height) : static_cast<float>(extent.height),
+                            .minDepth = 0.0F,
+                            .maxDepth = 1.0F};
 
-        VkRect2D scissor;
-        scissor.offset = {.x = 0, .y = 0};
-        scissor.extent = {extent.width, extent.height};
+        VkRect2D scissor{.offset = {.x = 0, .y = 0}, .extent = {.width = extent.width, .height = extent.height}};
 
-        VkPipelineViewportStateCreateInfo viewportStateCreateInfo;
-        viewportStateCreateInfo.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        viewportStateCreateInfo.pNext         = nullptr;
-        viewportStateCreateInfo.flags         = 0;
-        viewportStateCreateInfo.viewportCount = 1;
-        viewportStateCreateInfo.pViewports    = &viewport;
-        viewportStateCreateInfo.scissorCount  = 1;
-        viewportStateCreateInfo.pScissors     = &scissor;
+        VkPipelineViewportStateCreateInfo viewportStateCreateInfo{.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+                                                                  .pNext         = nullptr,
+                                                                  .flags         = 0,
+                                                                  .viewportCount = 1,
+                                                                  .pViewports    = std::addressof(viewport),
+                                                                  .scissorCount  = 1,
+                                                                  .pScissors     = std::addressof(scissor)};
 
-        VkPipelineRasterizationStateCreateInfo rasterizationCreateInfo;
-        rasterizationCreateInfo.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        rasterizationCreateInfo.pNext                   = nullptr;
-        rasterizationCreateInfo.flags                   = 0;
-        rasterizationCreateInfo.depthClampEnable        = VK_FALSE;
-        rasterizationCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-        rasterizationCreateInfo.polygonMode             = VK_POLYGON_MODE_FILL;
-        rasterizationCreateInfo.cullMode                = VK_CULL_MODE_NONE;
-        rasterizationCreateInfo.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        rasterizationCreateInfo.depthBiasEnable         = VK_FALSE;
-        rasterizationCreateInfo.depthBiasConstantFactor = 0.0F;
-        rasterizationCreateInfo.depthBiasClamp          = 0.0F;
-        rasterizationCreateInfo.depthBiasSlopeFactor    = 0.0F;
-        rasterizationCreateInfo.lineWidth               = 1.0F;
+        VkPipelineRasterizationStateCreateInfo rasterizationCreateInfo{.sType            = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+                                                                       .pNext            = nullptr,
+                                                                       .flags            = 0,
+                                                                       .depthClampEnable = VK_FALSE,
+                                                                       .rasterizerDiscardEnable = VK_FALSE,
+                                                                       .polygonMode             = VK_POLYGON_MODE_FILL,
+                                                                       .cullMode                = VK_CULL_MODE_NONE,
+                                                                       .frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+                                                                       .depthBiasEnable         = VK_FALSE,
+                                                                       .depthBiasConstantFactor = 0.0F,
+                                                                       .depthBiasClamp          = 0.0F,
+                                                                       .depthBiasSlopeFactor    = 0.0F,
+                                                                       .lineWidth               = 1.0F};
 
-        VkPipelineMultisampleStateCreateInfo multisampleCreateInfo;
-        multisampleCreateInfo.sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisampleCreateInfo.pNext                 = nullptr;
-        multisampleCreateInfo.flags                 = 0;
-        multisampleCreateInfo.rasterizationSamples  = VK_SAMPLE_COUNT_1_BIT;
-        multisampleCreateInfo.sampleShadingEnable   = VK_FALSE;
-        multisampleCreateInfo.minSampleShading      = 1.0F;
-        multisampleCreateInfo.pSampleMask           = nullptr;
-        multisampleCreateInfo.alphaToCoverageEnable = VK_FALSE;
-        multisampleCreateInfo.alphaToOneEnable      = VK_FALSE;
+        VkPipelineMultisampleStateCreateInfo multisampleCreateInfo{.sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+                                                                   .pNext                 = nullptr,
+                                                                   .flags                 = 0,
+                                                                   .rasterizationSamples  = VK_SAMPLE_COUNT_1_BIT,
+                                                                   .sampleShadingEnable   = VK_FALSE,
+                                                                   .minSampleShading      = 1.0F,
+                                                                   .pSampleMask           = nullptr,
+                                                                   .alphaToCoverageEnable = VK_FALSE,
+                                                                   .alphaToOneEnable      = VK_FALSE};
 
         // do not use blending, we only have one image and that should not be modified
-        VkPipelineColorBlendAttachmentState colorBlendAttachment;
-        colorBlendAttachment.blendEnable         = VK_FALSE;
-        colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-        colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        colorBlendAttachment.colorBlendOp        = VK_BLEND_OP_ADD;
-        colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-        colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-        colorBlendAttachment.alphaBlendOp        = VK_BLEND_OP_ADD;
-        colorBlendAttachment.colorWriteMask =
-            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        VkPipelineColorBlendAttachmentState colorBlendAttachment{.blendEnable         = VK_FALSE,
+                                                                 .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+                                                                 .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                 .colorBlendOp        = VK_BLEND_OP_ADD,
+                                                                 .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+                                                                 .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+                                                                 .alphaBlendOp        = VK_BLEND_OP_ADD,
+                                                                 .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                                                                                   | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT};
 
-        VkPipelineColorBlendStateCreateInfo colorBlendCreateInfo;
-        colorBlendCreateInfo.sType             = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        colorBlendCreateInfo.pNext             = nullptr;
-        colorBlendCreateInfo.flags             = 0;
-        colorBlendCreateInfo.logicOpEnable     = VK_FALSE;
-        colorBlendCreateInfo.logicOp           = VK_LOGIC_OP_NO_OP;
-        colorBlendCreateInfo.attachmentCount   = 1;
-        colorBlendCreateInfo.pAttachments      = &colorBlendAttachment;
-        colorBlendCreateInfo.blendConstants[0] = 0.0F;
-        colorBlendCreateInfo.blendConstants[1] = 0.0F;
-        colorBlendCreateInfo.blendConstants[2] = 0.0F;
-        colorBlendCreateInfo.blendConstants[3] = 0.0F;
+        VkPipelineColorBlendStateCreateInfo colorBlendCreateInfo{.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+                                                                 .pNext           = nullptr,
+                                                                 .flags           = 0,
+                                                                 .logicOpEnable   = VK_FALSE,
+                                                                 .logicOp         = VK_LOGIC_OP_NO_OP,
+                                                                 .attachmentCount = 1,
+                                                                 .pAttachments    = std::addressof(colorBlendAttachment),
+                                                                 .blendConstants  = {0.0F, 0.0F, 0.0F, 0.0F}};
 
-        VkDynamicState dynamicStates[] = {};
+        VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+                                                                .pNext             = nullptr,
+                                                                .flags             = 0,
+                                                                .dynamicStateCount = 0,
+                                                                .pDynamicStates    = nullptr};
 
-        VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo;
-        dynamicStateCreateInfo.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        dynamicStateCreateInfo.pNext             = nullptr;
-        dynamicStateCreateInfo.flags             = 0;
-        dynamicStateCreateInfo.dynamicStateCount = 0;
-        dynamicStateCreateInfo.pDynamicStates    = dynamicStates;
+        VkGraphicsPipelineCreateInfo pipelineCreateInfo{.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+                                                        .pNext               = nullptr,
+                                                        .flags               = 0,
+                                                        .stageCount          = std::size(shaderStages),
+                                                        .pStages             = std::data(shaderStages),
+                                                        .pVertexInputState   = std::addressof(vertexInputCreateInfo),
+                                                        .pInputAssemblyState = std::addressof(inputAssemblyCreateInfo),
+                                                        .pTessellationState  = nullptr,
+                                                        .pViewportState      = std::addressof(viewportStateCreateInfo),
+                                                        .pRasterizationState = std::addressof(rasterizationCreateInfo),
+                                                        .pMultisampleState   = std::addressof(multisampleCreateInfo),
+                                                        .pDepthStencilState  = nullptr,
+                                                        .pColorBlendState    = std::addressof(colorBlendCreateInfo),
+                                                        .pDynamicState       = std::addressof(dynamicStateCreateInfo),
+                                                        .layout              = pipelineLayout,
+                                                        .renderPass          = renderPass,
+                                                        .subpass             = 0,
+                                                        .basePipelineHandle  = VK_NULL_HANDLE,
+                                                        .basePipelineIndex   = -1};
 
-        VkGraphicsPipelineCreateInfo pipelineCreateInfo;
-        pipelineCreateInfo.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipelineCreateInfo.pNext               = nullptr;
-        pipelineCreateInfo.flags               = 0;
-        pipelineCreateInfo.stageCount          = 2;
-        pipelineCreateInfo.pStages             = shaderStages;
-        pipelineCreateInfo.pVertexInputState   = &vertexInputCreateInfo;
-        pipelineCreateInfo.pInputAssemblyState = &inputAssemblyCreateInfo;
-        pipelineCreateInfo.pTessellationState  = nullptr;
-        pipelineCreateInfo.pViewportState      = &viewportStateCreateInfo;
-        pipelineCreateInfo.pRasterizationState = &rasterizationCreateInfo;
-        pipelineCreateInfo.pMultisampleState   = &multisampleCreateInfo;
-        pipelineCreateInfo.pDepthStencilState  = nullptr;
-        pipelineCreateInfo.pColorBlendState    = &colorBlendCreateInfo;
-        pipelineCreateInfo.pDynamicState       = &dynamicStateCreateInfo;
-        pipelineCreateInfo.layout              = pipelineLayout;
-        pipelineCreateInfo.renderPass          = renderPass;
-        pipelineCreateInfo.subpass             = 0;
-        pipelineCreateInfo.basePipelineHandle  = VK_NULL_HANDLE;
-        pipelineCreateInfo.basePipelineIndex   = -1;
-
-        result = pLogicalDevice->vkd.CreateGraphicsPipelines(pLogicalDevice->device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &pipeline);
+        result = pLogicalDevice->vkd.CreateGraphicsPipelines(
+            pLogicalDevice->device, VK_NULL_HANDLE, 1, std::addressof(pipelineCreateInfo), nullptr, std::addressof(pipeline));
         AssertVulkan(result);
 
         return pipeline;

@@ -18,7 +18,7 @@ namespace vkBasalt
     uint32_t convertToKeySym(std::string key)
     {
 #if VKBASALT_X11
-        return convertToKeySymX11(key);
+        return convertToKeySymX11(std::move(key));
 #endif
         return 0U;
     }

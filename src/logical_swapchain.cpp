@@ -1,5 +1,7 @@
 #include "logical_swapchain.hpp"
 
+#include <span>
+
 #include <logger.hpp>
 
 namespace vkBasalt

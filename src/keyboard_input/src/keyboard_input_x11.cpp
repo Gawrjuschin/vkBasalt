@@ -19,8 +19,8 @@ namespace vkBasalt
     uint32_t convertToKeySymX11(std::string key)
     {
         // TODO what if X11 isn't loaded?
-        uint32_t result = (uint32_t) XStringToKeysym(key.c_str());
-        if (!result)
+        const auto result = static_cast<uint32_t>(XStringToKeysym(key.c_str()));
+        if (result == 0U)
         {
             Logger::err("invalid key");
         }
@@ -35,8 +35,8 @@ namespace vkBasalt
 
         if (usesX11 < 0)
         {
-            const char* disVar = getenv("DISPLAY");
-            if (!disVar || !std::strcmp(disVar, ""))
+            const char* disVar = std::getenv("DISPLAY");
+            if ((disVar == nullptr) || (std::strlen(disVar) == 0))
             {
                 usesX11 = 0;
                 Logger::debug("no X11 support");

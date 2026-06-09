@@ -89,9 +89,9 @@ namespace vkBasalt
             logicalDevice.vkd.AllocateMemory(logicalDevice.device, &memoryAllocateInfo, nullptr, std::addressof(logicalSwapchain.fakeImageMemory));
         AssertVulkan(result);
 
-        for (auto [i, fakeImage] : std::views::enumerate(logicalSwapchain.fakeImages))
+        for (auto [idx, fakeImage] : std::views::enumerate(logicalSwapchain.fakeImages))
         {
-            const auto memoryOffset{memoryRequirements.size * i};
+            const auto memoryOffset{memoryRequirements.size * idx};
             const auto result = logicalDevice.vkd.BindImageMemory(logicalDevice.device, fakeImage, logicalSwapchain.fakeImageMemory, memoryOffset);
             AssertVulkan(result);
         }

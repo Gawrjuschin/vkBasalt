@@ -33,7 +33,7 @@ namespace vkBasalt
 
     private:
         VkImage               lutImage;
-        VkDeviceMemory        lutMemory;
+        VkDeviceMemory        lutMemory{};
         VkImageView           lutImageView;
         VkDescriptorSetLayout lutDescriptorSetLayout;
         VkDescriptorPool      lutDescriptorPool;
