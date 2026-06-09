@@ -1,12 +1,18 @@
 #include "lut_cube.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <cstddef>
+#include <cstdint>
 #include <fstream>
-
-#include <iterator>
-#include <logger.hpp>
+#include <limits>
+#include <spanstream>
 #include <string>
+#include <string_view>
 #include <vector>
+#include <utility>
+
+#include <logger.hpp>
 
 namespace vkBasalt
 {
@@ -14,10 +20,14 @@ namespace vkBasalt
     {
         std::string skipWhiteSpace(std::string text)
         {
-            while (text.size() > 0 && (text[0] == ' ' || text[0] == '\t'))
+
+            if (const auto notSpaceIt =
+                    std::ranges::find_if_not(text, [](const auto character) { return std::isspace(static_cast<uint8_t>(character)) != 0; });
+                notSpaceIt != std::cend(text))
             {
-                text = text.substr(1);
+                text.erase(std::begin(text), notSpaceIt);
             }
+
             return text;
         }
     } // namespace
@@ -30,6 +40,7 @@ namespace vkBasalt
         if (!cubeStream.good())
         {
             Logger::err("lut cube file does not exist");
+            return;
         }
 
         std::string line;
@@ -41,36 +52,38 @@ namespace vkBasalt
     }
     void LutCube::parseLine(std::string line)
     {
-        if (std::empty(line))
+        using namespace std::string_view_literals;
+        constexpr static auto lut3dSize = "LUT_3D_SIZE"sv;
+        constexpr static auto domainMin = "DOMAIN_MIN"sv;
+        constexpr static auto domainMax = "DOMAIN_MAX"sv;
+
+        if (std::empty(line) || line.front() == '#')
         {
             return;
         }
-        if (line.front() == '#')
+        if (const auto lut3dSizePos = line.find(lut3dSize); lut3dSizePos != std::string::npos)
         {
-            return;
-        }
-        if (line.contains("LUT_3D_SIZE"))
-        {
-            line = line.substr(line.find("LUT_3D_SIZE") + 11);
+            line = line.substr(lut3dSizePos + std::size(lut3dSize));
             line = skipWhiteSpace(std::move(line));
             size = std::stoi(line);
+            const auto sizeUL = static_cast<size_t>(size);
 
-            colorCube = std::vector<uint8_t>(size * size * size * 4, 0xFF);
+            colorCube = std::vector<uint8_t>(sizeUL * sizeUL * sizeUL * 4U, uint8_t{0xFF});
             return;
         }
-        if (line.contains("DOMAIN_MIN"))
+        if (const auto domainMinPos = line.find(domainMin); domainMinPos != std::string::npos)
         {
-            line = line.substr(line.find("DOMAIN_MIN") + 10);
+            line = line.substr(domainMinPos + std::size(domainMin));
             splitTripel(line, minX, minY, minZ);
             return;
         }
-        if (line.contains("DOMAIN_MAX"))
+        if (const auto domainMaxPos = line.find(domainMax); domainMaxPos != std::string::npos)
         {
-            line = line.substr(line.find("DOMAIN_MAX") + 10);
+            line = line.substr(domainMaxPos + std::size(domainMax));
             splitTripel(line, maxX, maxY, maxZ);
             return;
         }
-        if (line.find_first_of("0123456789") == 0)
+        if (std::isdigit(static_cast<uint8_t>(line.front())) != 0)
         {
             float         x{}, y{}, z{};
             uint8_t       outX{}, outY{}, outZ{};
@@ -98,25 +111,49 @@ namespace vkBasalt
 
     void LutCube::splitTripel(std::string tripel, float& x, float& y, float& z)
     {
-        tripel       = skipWhiteSpace(std::move(tripel));
-        size_t after = tripel.find_first_of(" \n");
-        x            = std::stof(tripel.substr(0, after));
-        tripel       = tripel.substr(after);
+        // TODO: test new impl
+        if constexpr (constexpr bool modernSolution{false})
+        {
+            // TODO: std::from_chars based solution
+            std::spanstream sstream{tripel};
+            sstream >> x >> y >> z;
+        }
+        else
+        {
+            tripel       = skipWhiteSpace(std::move(tripel));
+            size_t after = tripel.find_first_of(" \n");
+            x            = std::stof(tripel.substr(0, after));
+            tripel       = tripel.substr(after);
 
-        tripel = skipWhiteSpace(std::move(tripel));
-        after  = tripel.find_first_of(" \n");
-        y      = std::stof(tripel.substr(0, after));
-        tripel = tripel.substr(after);
+            tripel = skipWhiteSpace(std::move(tripel));
+            after  = tripel.find_first_of(" \n");
+            y      = std::stof(tripel.substr(0, after));
+            tripel = tripel.substr(after);
 
-        tripel = skipWhiteSpace(std::move(tripel));
-        z      = std::stof(tripel);
+            tripel = skipWhiteSpace(std::move(tripel));
+            z      = std::stof(tripel);
+        }
     }
 
-    void LutCube::clampTripel(float x, float y, float z, unsigned char& outX, unsigned char& outY, unsigned char& outZ)
+    void LutCube::clampTripel(float x, float y, float z, unsigned char& outX, unsigned char& outY, unsigned char& outZ) const
     {
-        outX = (uint8_t) 0xFF * (x / (maxX - minX));
-        outY = (uint8_t) 0xFF * (y / (maxY - minY));
-        outZ = (uint8_t) 0xFF * (z / (maxZ - minZ));
+        // TODO: test new impl
+        if constexpr (constexpr bool modernSolution{false})
+        {
+            const auto multX = x / (maxX - minX);
+            const auto multY = y / (maxY - minY);
+            const auto multZ = z / (maxZ - minZ);
+
+            outX = static_cast<uint8_t>(float{std::numeric_limits<uint8_t>::max()} * multX);
+            outY = static_cast<uint8_t>(float{std::numeric_limits<uint8_t>::max()} * multY);
+            outZ = static_cast<uint8_t>(float{std::numeric_limits<uint8_t>::max()} * multZ);
+        }
+        else
+        {
+            outX = (uint8_t) 0xFF * (x / (maxX - minX));
+            outY = (uint8_t) 0xFF * (y / (maxY - minY));
+            outZ = (uint8_t) 0xFF * (z / (maxZ - minZ));
+        }
     }
 
     void LutCube::writeColor(int x, int y, int z, unsigned char r, unsigned char g, unsigned char b)

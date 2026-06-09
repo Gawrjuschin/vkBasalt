@@ -15,9 +15,11 @@
 #include <Textures/AreaTex.h>
 #include <Textures/SearchTex.h>
 
+#include <algorithm>
+#include <iterator>
 #include <logger.hpp>
 
-#include <iterator>
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <ranges>
@@ -146,14 +148,14 @@ namespace vkBasalt
         unormRenderPass = createRenderPass(pLogicalDevice, VK_FORMAT_B8G8R8A8_UNORM);
         pipelineLayout  = createGraphicsPipelineLayout(pLogicalDevice, std::span{std::addressof(imageSamplerDescriptorSetLayout), 1U});
 
-        constexpr static auto specMapEntrys{[]() {
+        constexpr static auto specMapEntrys{[] {
             std::array<VkSpecializationMapEntry, 8U> specMapEntrys{}; // TODO: why 8
             for (auto [idx, specMapEntry] : specMapEntrys | std::views::enumerate)
             {
-                specMapEntrys[idx] = {
-                    .constantID = static_cast<uint32_t>(idx),
-                    .offset     = static_cast<uint32_t>(sizeof(float) * idx), // TODO not clean to assume that sizeof(int32_t) == sizeof(float)
-                    .size       = sizeof(float)};
+                specMapEntry = {.constantID = static_cast<uint32_t>(idx),
+                                .offset =
+                                    static_cast<uint32_t>(sizeof(float) * idx), // TODO not clean to assume that sizeof(int32_t) == sizeof(float)
+                                .size = sizeof(float)};
             }
             return specMapEntrys;
         }()};
@@ -196,11 +198,11 @@ namespace vkBasalt
                                                   renderPass,
                                                   pipelineLayout);
 
-        std::vector imageViewsVector = {inputImageViews,
-                                        edgeImageViews,
-                                        std::vector<VkImageView>(std::size(inputImageViews), areaImageView),
-                                        std::vector<VkImageView>(std::size(inputImageViews), searchImageView),
-                                        blendImageViews};
+        const auto imageViewsVector = {inputImageViews,
+                                       edgeImageViews,
+                                       std::vector<VkImageView>(std::size(inputImageViews), areaImageView),
+                                       std::vector<VkImageView>(std::size(inputImageViews), searchImageView),
+                                       blendImageViews};
 
         imageDescriptorSets = allocateAndWriteImageSamplerDescriptorSets(pLogicalDevice,
                                                                          descriptorPool,
@@ -214,6 +216,12 @@ namespace vkBasalt
     }
     void SmaaEffect::applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer)
     {
+        if (std::size(inputImages) <= imageIndex)
+        {
+            Logger::err("imageIndex is out of range");
+            return;
+        }
+
         Logger::debug("applying smaa effect to cb " + convertToString(commandBuffer));
         // Used to make the Image accessable by the shader
         VkImageMemoryBarrier memoryBarrier{
@@ -258,7 +266,7 @@ namespace vkBasalt
                                                   .pNext           = nullptr,
                                                   .renderPass      = unormRenderPass,
                                                   .framebuffer     = edgeFramebuffers[imageIndex],
-                                                  .renderArea      = {.offset = {0, 0}, .extent = imageExtent},
+                                                  .renderArea      = {.offset = {.x = 0, .y = 0}, .extent = imageExtent},
                                                   .clearValueCount = 1,
                                                   .pClearValues    = std::addressof(clearValue)};
         // edge renderPass
@@ -364,18 +372,26 @@ namespace vkBasalt
         pLogicalDevice->vkd.FreeMemory(pLogicalDevice->device, areaMemory, nullptr);
         pLogicalDevice->vkd.FreeMemory(pLogicalDevice->device, searchMemory, nullptr);
 
-        for (uint32_t i = 0; i < std::size(edgeFramebuffers); ++i)
-        {
-            pLogicalDevice->vkd.DestroyFramebuffer(pLogicalDevice->device, edgeFramebuffers[i], nullptr);
-            pLogicalDevice->vkd.DestroyFramebuffer(pLogicalDevice->device, blendFramebuffers[i], nullptr);
-            pLogicalDevice->vkd.DestroyFramebuffer(pLogicalDevice->device, neignborFramebuffers[i], nullptr);
-            pLogicalDevice->vkd.DestroyImageView(pLogicalDevice->device, inputImageViews[i], nullptr);
-            pLogicalDevice->vkd.DestroyImageView(pLogicalDevice->device, edgeImageViews[i], nullptr);
-            pLogicalDevice->vkd.DestroyImageView(pLogicalDevice->device, blendImageViews[i], nullptr);
-            pLogicalDevice->vkd.DestroyImageView(pLogicalDevice->device, outputImageViews[i], nullptr);
-            pLogicalDevice->vkd.DestroyImage(pLogicalDevice->device, edgeImages[i], nullptr);
-            pLogicalDevice->vkd.DestroyImage(pLogicalDevice->device, blendImages[i], nullptr);
-        }
+        auto destroyFramebuffer = [pLogicalDevice = pLogicalDevice](auto& buffer) {
+            pLogicalDevice->vkd.DestroyFramebuffer(pLogicalDevice->device, buffer, nullptr);
+        };
+        std::ranges::for_each(edgeFramebuffers, destroyFramebuffer);
+        std::ranges::for_each(blendFramebuffers, destroyFramebuffer);
+        std::ranges::for_each(neignborFramebuffers, destroyFramebuffer);
+
+        auto destroyImageView = [pLogicalDevice = pLogicalDevice](auto& view) {
+            pLogicalDevice->vkd.DestroyImageView(pLogicalDevice->device, view, nullptr);
+        };
+        std::ranges::for_each(inputImageViews, destroyImageView);
+        std::ranges::for_each(edgeImageViews, destroyImageView);
+        std::ranges::for_each(blendImageViews, destroyImageView);
+        std::ranges::for_each(outputImageViews, destroyImageView);
+
+        auto destroyImage = [pLogicalDevice = pLogicalDevice](auto& image) {
+            pLogicalDevice->vkd.DestroyImage(pLogicalDevice->device, image, nullptr);
+        };
+        std::ranges::for_each(edgeImages, destroyImage);
+        std::ranges::for_each(blendImages, destroyImage);
 
         Logger::debug("after DestroyImageView");
         pLogicalDevice->vkd.DestroyImageView(pLogicalDevice->device, areaImageView, nullptr);

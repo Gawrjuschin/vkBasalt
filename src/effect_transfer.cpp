@@ -1,10 +1,14 @@
 #include "effect_transfer.hpp"
 #include "logical_device.hpp"
 #include "config.hpp"
+
 #include <cstdint>
-#include <iterator>
-#include <vulkan/vulkan_core.h>
+#include <memory>
 #include <span>
+
+#include <vulkan/vulkan_core.h>
+
+#include <logger.hpp>
 
 namespace vkBasalt
 {
@@ -21,6 +25,12 @@ namespace vkBasalt
 
     void TransferEffect::applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer)
     {
+        if (std::size(inputImages) <= imageIndex)
+        {
+            Logger::err("imageIndex is out of range");
+            return;
+        }
+
         const VkImageCopy imageCopy{.srcSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1},
                                     .srcOffset      = {},
                                     .dstSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1},

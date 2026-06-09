@@ -26,7 +26,7 @@ namespace vkBasalt
                                                       .inputAttachmentCount    = 0,
                                                       .pInputAttachments       = nullptr,
                                                       .colorAttachmentCount    = 1,
-                                                      .pColorAttachments       = &attachmentReference,
+                                                      .pColorAttachments       = std::addressof(attachmentReference),
                                                       .pResolveAttachments     = nullptr,
                                                       .pDepthStencilAttachment = nullptr,
                                                       .preserveAttachmentCount = 0,
@@ -44,11 +44,11 @@ namespace vkBasalt
                                                           .pNext           = nullptr,
                                                           .flags           = 0,
                                                           .attachmentCount = 1,
-                                                          .pAttachments    = &attachmentDescription,
+                                                          .pAttachments    = std::addressof(attachmentDescription),
                                                           .subpassCount    = 1,
-                                                          .pSubpasses      = &subpassDescription,
+                                                          .pSubpasses      = std::addressof(subpassDescription),
                                                           .dependencyCount = 1,
-                                                          .pDependencies   = &subpassDependency};
+                                                          .pDependencies   = std::addressof(subpassDependency)};
 
         VkRenderPass renderPass{};
         const auto   result =

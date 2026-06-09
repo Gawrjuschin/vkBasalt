@@ -16,7 +16,7 @@
 
 namespace vkBasalt
 {
-    uint32_t convertToKeySymX11(std::string key)
+    uint32_t convertToKeySymX11(const std::string& key)
     {
         // TODO what if X11 isn't loaded?
         const auto result = static_cast<uint32_t>(XStringToKeysym(key.c_str()));
@@ -49,7 +49,7 @@ namespace vkBasalt
             }
         }
 
-        if (!usesX11)
+        if (usesX11 == 0)
         {
             return false;
         }
@@ -58,9 +58,9 @@ namespace vkBasalt
 
         XQueryKeymap(display.get(), keys_return);
 
-        KeyCode kc2 = XKeysymToKeycode(display.get(), (KeySym) ks);
+        const KeyCode kc2 = XKeysymToKeycode(display.get(), static_cast<KeySym>(ks));
 
-        return !!(keys_return[kc2 >> 3] & (1 << (kc2 & 7)));
+        return (keys_return[kc2 >> 3] & (1 << (kc2 & 7))) != 0;
     }
 
 } // namespace vkBasalt

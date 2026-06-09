@@ -15,7 +15,7 @@ namespace vkBasalt
     VkPipeline createGraphicsPipeline(LogicalDevice*        pLogicalDevice,
                                       VkShaderModule        vertexModule,
                                       VkSpecializationInfo* vertexSpecializationInfo,
-                                      std::string           vertexEntryPoint,
+                                      const std::string&    vertexEntryPoint,
                                       VkShaderModule        fragmentModule,
                                       VkSpecializationInfo* fragmentSpecializationInfo,
                                       std::string           fragmentEntryPoint,

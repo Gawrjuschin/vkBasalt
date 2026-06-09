@@ -128,6 +128,12 @@ namespace vkBasalt
 
     void LutEffect::applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer)
     {
+        if (std::size(inputImages) <= imageIndex)
+        {
+            Logger::err("imageIndex is out of range");
+            return;
+        }
+
         pLogicalDevice->vkd.CmdBindDescriptorSets(
             commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, std::addressof(lutDescriptorSet), 0, nullptr);
         SimpleEffect::applyEffect(imageIndex, commandBuffer);

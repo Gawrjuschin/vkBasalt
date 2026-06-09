@@ -103,8 +103,8 @@ namespace vkBasalt
     {
         const auto                                     currentFrame = std::chrono::high_resolution_clock::now();
         const std::chrono::duration<float, std::milli> duration     = currentFrame - lastFrame;
-        lastFrame                                             = currentFrame;
-        float frametime                                       = duration.count();
+        lastFrame                                                   = currentFrame;
+        const float frametime                                       = duration.count();
         std::memcpy(static_cast<uint8_t*>(mapedBuffer) + offset, std::addressof(frametime), sizeof(float));
     }
 
@@ -172,9 +172,9 @@ namespace vkBasalt
 
     void TimerUniform::update(void* mapedBuffer)
     {
-        auto                                     currentFrame = std::chrono::high_resolution_clock::now();
+        auto                                           currentFrame = std::chrono::high_resolution_clock::now();
         const std::chrono::duration<float, std::milli> duration     = currentFrame - start;
-        float                                    timer        = duration.count();
+        float                                          timer        = duration.count();
         std::memcpy(static_cast<uint8_t*>(mapedBuffer) + offset, std::addressof(timer), sizeof(float));
     }
 

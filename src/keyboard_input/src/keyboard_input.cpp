@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <string>
-#include <utility>
 
 // TODO build without X11
 #ifndef VKBASALT_X11
@@ -15,10 +14,10 @@
 
 namespace vkBasalt
 {
-    uint32_t convertToKeySym(std::string key)
+    uint32_t convertToKeySym(const std::string& key)
     {
 #if VKBASALT_X11
-        return convertToKeySymX11(std::move(key));
+        return convertToKeySymX11(key);
 #endif
         return 0U;
     }

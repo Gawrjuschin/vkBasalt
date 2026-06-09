@@ -21,12 +21,11 @@ namespace vkBasalt
     {
         std::vector<VkCommandBuffer> commandBuffers(count);
 
-        VkCommandBufferAllocateInfo allocInfo;
-        allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.pNext              = nullptr;
-        allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool        = pLogicalDevice->commandPool;
-        allocInfo.commandBufferCount = count;
+        const VkCommandBufferAllocateInfo allocInfo{.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+                                                    .pNext              = nullptr,
+                                                    .commandPool        = pLogicalDevice->commandPool,
+                                                    .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                                                    .commandBufferCount = count};
 
         const VkResult result =
             pLogicalDevice->vkd.AllocateCommandBuffers(pLogicalDevice->device, std::addressof(allocInfo), std::data(commandBuffers));

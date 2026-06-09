@@ -1,5 +1,6 @@
 #include "fake_swapchain.hpp"
 #include "logical_device.hpp"
+#include "logical_swapchain.hpp"
 #include "memory.hpp"
 #include "format.hpp"
 #include "vulkan_include.hpp"
@@ -39,7 +40,7 @@ namespace vkBasalt
                                                                  .viewFormatCount = std::size(formats),
                                                                  .pViewFormats    = std::data(formats)};
 
-        VkImageCreateInfo imageCreateInfo{
+        const VkImageCreateInfo imageCreateInfo{
             .sType       = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
             .pNext       = (unormFormat == srgbFormat) ? nullptr : &imageFormatListCreateInfo,
             .flags       = static_cast<VkImageCreateFlags>((unormFormat == srgbFormat) ? 0 : VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT),
@@ -78,12 +79,12 @@ namespace vkBasalt
             memoryRequirements.size = (memoryRequirements.size / memoryRequirements.alignment + 1) * memoryRequirements.alignment;
         }
 
-        VkMemoryAllocateInfo memoryAllocateInfo;
-        memoryAllocateInfo.sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        memoryAllocateInfo.pNext          = nullptr;
-        memoryAllocateInfo.allocationSize = memoryRequirements.size * std::size(logicalSwapchain.fakeImages);
-        memoryAllocateInfo.memoryTypeIndex =
-            findMemoryTypeIndex(std::addressof(logicalDevice), memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        const VkMemoryAllocateInfo memoryAllocateInfo{
+            .sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .pNext          = nullptr,
+            .allocationSize = memoryRequirements.size * std::size(logicalSwapchain.fakeImages),
+            .memoryTypeIndex =
+                findMemoryTypeIndex(std::addressof(logicalDevice), memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)};
 
         const auto result =
             logicalDevice.vkd.AllocateMemory(logicalDevice.device, &memoryAllocateInfo, nullptr, std::addressof(logicalSwapchain.fakeImageMemory));

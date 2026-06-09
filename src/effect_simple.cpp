@@ -51,9 +51,8 @@ namespace vkBasalt
         imageSamplerDescriptorSetLayout = createImageSamplerDescriptorSetLayout(pLogicalDevice, 1);
         Logger::debug("created descriptorSetLayouts");
 
-        VkDescriptorPoolSize imagePoolSize;
-        imagePoolSize.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        imagePoolSize.descriptorCount = std::size(inputImages) + 10;
+        const VkDescriptorPoolSize imagePoolSize{.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                 .descriptorCount = static_cast<uint32_t>(std::size(inputImages) + 10)};
 
         descriptorPool = createDescriptorPool(pLogicalDevice, std::span{std::addressof(imagePoolSize), 1U});
         Logger::debug("created descriptorPool");
@@ -85,6 +84,12 @@ namespace vkBasalt
 
     void SimpleEffect::applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer)
     {
+        if (std::size(inputImages) <= imageIndex)
+        {
+            Logger::err("imageIndex is out of range");
+            return;
+        }
+
         Logger::debug("applying SimpleEffect to cb " + convertToString(commandBuffer));
         // Used to make the Image accessable by the shader
         const VkImageMemoryBarrier memoryBarrier{

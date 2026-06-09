@@ -1059,7 +1059,7 @@ namespace vkBasalt
                     // return proc from device dispatch table
                     auto&                  state = GlobalState::Get();
                     const std::scoped_lock lock{state.globalLock};
-                    if (const auto deviceIt{state.deviceMap.find(vkBasalt::GetKey(device))}; deviceIt != std::cend(state.deviceMap))
+                    if (const auto deviceIt{state.deviceMap.find(GetKey(device))}; deviceIt != std::cend(state.deviceMap))
                     {
                         return deviceIt->second.vkd.GetDeviceProcAddr(device, pName);
                     }
@@ -1074,7 +1074,7 @@ namespace vkBasalt
                 .or_else([instance, pName]() -> std::optional<PFN_vkVoidFunction> {
                     auto&                  state = GlobalState::Get();
                     const std::scoped_lock lock(state.globalLock);
-                    if (const auto instanceIt{state.instanceMap.find(vkBasalt::GetKey(instance))}; instanceIt != std::cend(state.instanceMap))
+                    if (const auto instanceIt{state.instanceMap.find(GetKey(instance))}; instanceIt != std::cend(state.instanceMap))
                     {
                         return instanceIt->second.dispatch.GetInstanceProcAddr(instance, pName);
                     }

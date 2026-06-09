@@ -14,9 +14,9 @@ namespace vkBasalt
             defaultTransfer.reset();
 
             pLogicalDevice->vkd.FreeCommandBuffers(
-                pLogicalDevice->device, pLogicalDevice->commandPool, commandBuffersEffect.size(), commandBuffersEffect.data());
+                pLogicalDevice->device, pLogicalDevice->commandPool, std::size(commandBuffersEffect), std::data(commandBuffersEffect));
             pLogicalDevice->vkd.FreeCommandBuffers(
-                pLogicalDevice->device, pLogicalDevice->commandPool, commandBuffersNoEffect.size(), commandBuffersNoEffect.data());
+                pLogicalDevice->device, pLogicalDevice->commandPool, std::size(commandBuffersNoEffect), std::data(commandBuffersNoEffect));
             Logger::debug("after free commandbuffer");
 
             pLogicalDevice->vkd.FreeMemory(pLogicalDevice->device, fakeImageMemory, nullptr);

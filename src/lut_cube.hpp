@@ -48,9 +48,9 @@ namespace vkBasalt
         void parseLine(std::string line);
 
         // splits a tripel of floats
-        void splitTripel(std::string tripel, float& x, float& y, float& z);
+        static void splitTripel(std::string tripel, float& x, float& y, float& z);
 
-        void clampTripel(float x, float y, float z, unsigned char& outX, unsigned char& outY, unsigned char& outZ);
+        void clampTripel(float x, float y, float z, unsigned char& outX, unsigned char& outY, unsigned char& outZ) const;
     };
 
 } // namespace vkBasalt

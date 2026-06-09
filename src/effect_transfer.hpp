@@ -22,9 +22,13 @@ namespace vkBasalt
                        std::span<const VkImage> inputImages,
                        std::span<const VkImage> outputImages,
                        Config*                  pConfig);
-        void applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
-
+        TransferEffect(const TransferEffect&)            = delete;
+        TransferEffect& operator=(const TransferEffect&) = delete;
+        TransferEffect(TransferEffect&&)                 = delete;
+        TransferEffect& operator=(TransferEffect&&)      = delete;
         ~TransferEffect() override;
+
+        void applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
 
     private:
         LogicalDevice*       pLogicalDevice;
