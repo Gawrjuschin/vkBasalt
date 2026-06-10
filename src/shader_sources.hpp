@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VKBASALT_SHADER_SOURCES_HPP
+#define VKBASALT_SHADER_SOURCES_HPP
 
 #include <array>
 #include <cstdint>
@@ -57,3 +58,5 @@ namespace vkBasalt
 #include <smaa_neighbor.vert.spv>
     });
 } // namespace vkBasalt
+
+#endif // VKBASALT_SHADER_SOURCES_HPP

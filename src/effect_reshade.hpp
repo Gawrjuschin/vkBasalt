@@ -1,41 +1,43 @@
 #ifndef EFFECT_RESHADE_HPP_INCLUDED
 #define EFFECT_RESHADE_HPP_INCLUDED
-#include <vector>
-#include <fstream>
-#include <string>
-#include <iostream>
-#include <vector>
-#include <unordered_map>
-#include <memory>
-
-#include "vulkan_include.hpp"
 
 #include "effect.hpp"
 #include "config.hpp"
+#include "effect_module.hpp"
 #include "reshade_uniforms.hpp"
-
 #include "logical_device.hpp"
 
-#include <effect_parser.hpp>
-#include <effect_codegen.hpp>
-#include <effect_preprocessor.hpp>
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <vector>
+#include <unordered_map>
+#include <memory>
+#include <span>
+
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
-    class ReshadeEffect : public Effect
+    class ReshadeEffect final : public Effect
     {
     public:
-        ReshadeEffect(LogicalDevice*       pLogicalDevice,
-                      VkFormat             format,
-                      VkExtent2D           imageExtent,
-                      std::vector<VkImage> inputImages,
-                      std::vector<VkImage> outputImages,
-                      Config*              pConfig,
-                      std::string          effectName);
-        void virtual applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
-        void virtual updateEffect() override;
-        void virtual useDepthImage(VkImageView depthImageView) override;
-        virtual ~ReshadeEffect();
+        ReshadeEffect(LogicalDevice*           pLogicalDevice,
+                      VkFormat                 format,
+                      VkExtent2D               imageExtent,
+                      std::span<const VkImage> inputImages,
+                      std::span<const VkImage> outputImages,
+                      Config*                  pConfig,
+                      std::string_view         effectName);
+        ReshadeEffect(const ReshadeEffect&)            = delete;
+        ReshadeEffect& operator=(const ReshadeEffect&) = delete;
+        ReshadeEffect(ReshadeEffect&&)                 = delete;
+        ReshadeEffect& operator=(ReshadeEffect&&)      = delete;
+        ~ReshadeEffect() override;
+
+        void applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
+        void updateEffect() override;
+        void useDepthImage(VkImageView depthImageView) override;
 
     private:
         LogicalDevice*           pLogicalDevice;
@@ -65,7 +67,7 @@ namespace vkBasalt
 
         VkDescriptorSetLayout                 uniformDescriptorSetLayout;
         VkDescriptorSetLayout                 imageSamplerDescriptorSetLayout;
-        VkShaderModule                        shaderModule;
+        VkShaderModule                        shaderModule{};
         VkDescriptorPool                      descriptorPool;
         std::vector<VkRenderPass>             renderPasses;
         std::vector<std::vector<std::string>> renderTargets;
@@ -87,23 +89,18 @@ namespace vkBasalt
         VkImageView stencilImageView;
         // how often the shader writes to the reshade back buffer
         // we need to flip the "backbuffer" after each write if there is a next one
-        int                      outputWrites = 0;
+        int                      outputWrites{};
         std::vector<VkImage>     backBufferImages;
         std::vector<VkImageView> backBufferImageViewsUNORM;
         std::vector<VkImageView> backBufferImageViewsSRGB;
-        VkBuffer                 stagingBuffer;
-        VkDeviceMemory           stagingBufferMemory;
-        uint32_t                 bufferSize;
-        VkDescriptorSet          bufferDescriptorSet;
+        VkBuffer                 stagingBuffer{};
+        VkDeviceMemory           stagingBufferMemory{};
+        uint32_t                 bufferSize{};
+        VkDescriptorSet          bufferDescriptorSet{};
 
-        std::vector<std::shared_ptr<ReshadeUniform>> uniforms;
+        std::vector<std::unique_ptr<ReshadeUniform>> uniforms;
 
-        void          createReshadeModule();
-        VkFormat      convertReshadeFormat(reshadefx::texture_format texFormat);
-        VkCompareOp   convertReshadeCompareOp(reshadefx::pass_stencil_func compareOp);
-        VkStencilOp   convertReshadeStencilOp(reshadefx::pass_stencil_op stencilOp);
-        VkBlendOp     convertReshadeBlendOp(reshadefx::pass_blend_op blendOp);
-        VkBlendFactor convertReshadeBlendFactor(reshadefx::pass_blend_func blendFactor);
+        void createReshadeModule();
     };
 } // namespace vkBasalt
 

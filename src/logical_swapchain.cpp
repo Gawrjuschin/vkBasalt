@@ -1,5 +1,9 @@
 #include "logical_swapchain.hpp"
 
+#include <span>
+
+#include <logger.hpp>
+
 namespace vkBasalt
 {
     void LogicalSwapchain::destroy()
@@ -10,21 +14,21 @@ namespace vkBasalt
             defaultTransfer.reset();
 
             pLogicalDevice->vkd.FreeCommandBuffers(
-                pLogicalDevice->device, pLogicalDevice->commandPool, commandBuffersEffect.size(), commandBuffersEffect.data());
+                pLogicalDevice->device, pLogicalDevice->commandPool, std::size(commandBuffersEffect), std::data(commandBuffersEffect));
             pLogicalDevice->vkd.FreeCommandBuffers(
-                pLogicalDevice->device, pLogicalDevice->commandPool, commandBuffersNoEffect.size(), commandBuffersNoEffect.data());
+                pLogicalDevice->device, pLogicalDevice->commandPool, std::size(commandBuffersNoEffect), std::data(commandBuffersNoEffect));
             Logger::debug("after free commandbuffer");
 
             pLogicalDevice->vkd.FreeMemory(pLogicalDevice->device, fakeImageMemory, nullptr);
 
-            for (uint32_t i = 0; i < fakeImages.size(); i++)
+            for (auto& fakeImage : fakeImages)
             {
-                pLogicalDevice->vkd.DestroyImage(pLogicalDevice->device, fakeImages[i], nullptr);
+                pLogicalDevice->vkd.DestroyImage(pLogicalDevice->device, fakeImage, nullptr);
             }
 
-            for (unsigned int i = 0; i < imageCount; i++)
+            for (auto& semaphore : std::span{semaphores}.subspan(0, imageCount))
             {
-                pLogicalDevice->vkd.DestroySemaphore(pLogicalDevice->device, semaphores[i], nullptr);
+                pLogicalDevice->vkd.DestroySemaphore(pLogicalDevice->device, semaphore, nullptr);
             }
             Logger::debug("after DestroySemaphore");
         }

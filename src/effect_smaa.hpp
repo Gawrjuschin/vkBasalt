@@ -1,33 +1,35 @@
 #ifndef EFFECT_SMAA_HPP_INCLUDED
 #define EFFECT_SMAA_HPP_INCLUDED
-#include <vector>
-#include <fstream>
-#include <string>
-#include <iostream>
-#include <vector>
-#include <unordered_map>
-#include <memory>
-
-#include "vulkan_include.hpp"
 
 #include "effect.hpp"
 #include "config.hpp"
-
 #include "logical_device.hpp"
+
+#include <cstdint>
+#include <vector>
+#include <span>
+
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
-    class SmaaEffect : public Effect
+    class SmaaEffect final : public Effect
     {
     public:
-        SmaaEffect(LogicalDevice*       pLogicalDevice,
-                   VkFormat             format,
-                   VkExtent2D           imageExtent,
-                   std::vector<VkImage> inputImages,
-                   std::vector<VkImage> outputImages,
-                   Config*              pConfig);
+        SmaaEffect(LogicalDevice*           pLogicalDevice,
+                   VkFormat                 format,
+                   VkExtent2D               imageExtent,
+                   std::span<const VkImage> inputImages,
+                   std::span<const VkImage> outputImages,
+                   Config*                  pConfig);
+
+        SmaaEffect(const SmaaEffect&)            = delete;
+        SmaaEffect& operator=(const SmaaEffect&) = delete;
+        SmaaEffect(SmaaEffect&&)                 = delete;
+        SmaaEffect& operator=(SmaaEffect&&)      = delete;
+        ~SmaaEffect() override;
+
         void applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
-        ~SmaaEffect();
 
     private:
         LogicalDevice*               pLogicalDevice;
@@ -49,24 +51,24 @@ namespace vkBasalt
         VkImageView                  searchImageView;
         VkDescriptorSetLayout        imageSamplerDescriptorSetLayout;
         VkDescriptorPool             descriptorPool;
-        VkShaderModule               edgeVertexModule;
-        VkShaderModule               edgeFragmentModule;
-        VkShaderModule               blendVertexModule;
-        VkShaderModule               blendFragmentModule;
-        VkShaderModule               neighborVertexModule;
-        VkShaderModule               neignborFragmentModule;
-        VkRenderPass                 renderPass;
-        VkRenderPass                 unormRenderPass;
-        VkPipelineLayout             pipelineLayout;
-        VkPipeline                   edgePipeline;
-        VkPipeline                   blendPipeline;
-        VkPipeline                   neighborPipeline;
-        VkExtent2D                   imageExtent;
-        VkFormat                     format;
-        VkDeviceMemory               imageMemory;
-        VkDeviceMemory               areaMemory;
-        VkDeviceMemory               searchMemory;
-        VkSampler                    sampler;
+        VkShaderModule               edgeVertexModule{};
+        VkShaderModule               edgeFragmentModule{};
+        VkShaderModule               blendVertexModule{};
+        VkShaderModule               blendFragmentModule{};
+        VkShaderModule               neighborVertexModule{};
+        VkShaderModule               neignborFragmentModule{};
+        VkRenderPass                 renderPass{};
+        VkRenderPass                 unormRenderPass{};
+        VkPipelineLayout             pipelineLayout{};
+        VkPipeline                   edgePipeline{};
+        VkPipeline                   blendPipeline{};
+        VkPipeline                   neighborPipeline{};
+        VkExtent2D                   imageExtent{};
+        VkFormat                     format{};
+        VkDeviceMemory               imageMemory{};
+        VkDeviceMemory               areaMemory{};
+        VkDeviceMemory               searchMemory{};
+        VkSampler                    sampler{};
 
         Config* pConfig;
     };

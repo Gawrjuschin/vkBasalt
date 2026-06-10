@@ -1,13 +1,9 @@
 #ifndef LUT_CUBE_HPP_INCLUDED
 #define LUT_CUBE_HPP_INCLUDED
 
+#include <cstdint>
 #include <vector>
-#include <fstream>
 #include <string>
-#include <iostream>
-#include <vector>
-#include <unordered_map>
-#include <cstdlib>
 
 namespace vkBasalt
 {
@@ -28,20 +24,20 @@ namespace vkBasalt
     class LutCube
     {
     public:
-        std::vector<unsigned char> colorCube;
-        int                        size;
+        std::vector<uint8_t>       colorCube;
+        int                        size{};
 
         LutCube(const std::string& file);
         LutCube();
 
     private:
-        float minX = 0.0f;
-        float minY = 0.0f;
-        float minZ = 0.0f;
+        float minX = 0.0F;
+        float minY = 0.0F;
+        float minZ = 0.0F;
 
-        float maxX = 1.0f;
-        float maxY = 1.0f;
-        float maxZ = 1.0f;
+        float maxX = 1.0F;
+        float maxY = 1.0F;
+        float maxZ = 1.0F;
 
         int currentX = 0;
         int currentY = 0;
@@ -52,12 +48,9 @@ namespace vkBasalt
         void parseLine(std::string line);
 
         // splits a tripel of floats
-        void splitTripel(std::string tripel, float& x, float& y, float& z);
+        static void splitTripel(std::string tripel, float& x, float& y, float& z);
 
-        void clampTripel(float x, float y, float z, unsigned char& outX, unsigned char& outY, unsigned char& outZ);
-
-        // returns the text without leading whitespace
-        std::string skipWhiteSpace(std::string text);
+        void clampTripel(float x, float y, float z, unsigned char& outX, unsigned char& outY, unsigned char& outZ) const;
     };
 
 } // namespace vkBasalt

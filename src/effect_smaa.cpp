@@ -1,10 +1,8 @@
 #include "effect_smaa.hpp"
-
-#include <cstring>
-
+#include "config.hpp"
 #include "image_view.hpp"
 #include "descriptor_set.hpp"
-#include "buffer.hpp"
+#include "logical_device.hpp"
 #include "renderpass.hpp"
 #include "graphics_pipeline.hpp"
 #include "framebuffer.hpp"
@@ -12,92 +10,28 @@
 #include "sampler.hpp"
 #include "image.hpp"
 #include "util.hpp"
+#include "shader_sources.hpp"
 
 #include <Textures/AreaTex.h>
 #include <Textures/SearchTex.h>
-#include "shader_sources.hpp"
+
+#include <algorithm>
+#include <iterator>
+#include <logger.hpp>
+
+#include <array>
+#include <cstdint>
+#include <memory>
+#include <ranges>
+#include <span>
+#include <vector>
+
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
-    SmaaEffect::SmaaEffect(LogicalDevice*       pLogicalDevice,
-                           VkFormat             format,
-                           VkExtent2D           imageExtent,
-                           std::vector<VkImage> inputImages,
-                           std::vector<VkImage> outputImages,
-                           Config*              pConfig)
+    namespace
     {
-        Logger::debug("in creating SmaaEffect");
-
-        this->pLogicalDevice = pLogicalDevice;
-        this->format         = format;
-        this->imageExtent    = imageExtent;
-        this->inputImages    = inputImages;
-        this->outputImages   = outputImages;
-        this->pConfig        = pConfig;
-
-        // create Images for the first and second pass at once -> less memory fragmentation
-        std::vector<VkImage> edgeAndBlendImages = createImages(pLogicalDevice,
-                                                               inputImages.size() * 2,
-                                                               {imageExtent.width, imageExtent.height, 1},
-                                                               VK_FORMAT_B8G8R8A8_UNORM, // TODO search for format and save it
-                                                               VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                                                               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                                               imageMemory);
-
-        edgeImages  = std::vector<VkImage>(edgeAndBlendImages.begin(), edgeAndBlendImages.begin() + edgeAndBlendImages.size() / 2);
-        blendImages = std::vector<VkImage>(edgeAndBlendImages.begin() + edgeAndBlendImages.size() / 2, edgeAndBlendImages.end());
-
-        inputImageViews = createImageViews(pLogicalDevice, format, inputImages);
-        Logger::debug("created input ImageViews");
-        edgeImageViews = createImageViews(pLogicalDevice, VK_FORMAT_B8G8R8A8_UNORM, edgeImages);
-        Logger::debug("created edge  ImageViews");
-        blendImageViews = createImageViews(pLogicalDevice, VK_FORMAT_B8G8R8A8_UNORM, blendImages);
-        Logger::debug("created blend ImageViews");
-        outputImageViews = createImageViews(pLogicalDevice, format, outputImages);
-        Logger::debug("created output ImageViews");
-        sampler = createSampler(pLogicalDevice);
-        Logger::debug("created sampler");
-
-        VkExtent3D areaImageExtent = {AREATEX_WIDTH, AREATEX_HEIGHT, 1};
-
-        areaImage = createImages(pLogicalDevice,
-                                 1,
-                                 areaImageExtent,
-                                 VK_FORMAT_R8G8_UNORM, // TODO search for format and save it
-                                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                 areaMemory)[0];
-
-        VkExtent3D searchImageExtent = {SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT, 1};
-
-        searchImage = createImages(pLogicalDevice,
-                                   1,
-                                   searchImageExtent,
-                                   VK_FORMAT_R8_UNORM, // TODO search for format and save it
-                                   VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                   searchMemory)[0];
-
-        uploadToImage(pLogicalDevice, areaImage, areaImageExtent, AREATEX_SIZE, areaTexBytes);
-
-        uploadToImage(pLogicalDevice, searchImage, searchImageExtent, SEARCHTEX_SIZE, searchTexBytes);
-
-        areaImageView = createImageViews(pLogicalDevice, VK_FORMAT_R8G8_UNORM, std::vector<VkImage>(1, areaImage))[0];
-        Logger::debug("after creating area ImageView");
-        searchImageView = createImageViews(pLogicalDevice, VK_FORMAT_R8_UNORM, std::vector<VkImage>(1, searchImage))[0];
-        Logger::debug("created search ImageView");
-
-        imageSamplerDescriptorSetLayout = createImageSamplerDescriptorSetLayout(pLogicalDevice, 5);
-        Logger::debug("created descriptorSetLayouts");
-
-        VkDescriptorPoolSize imagePoolSize;
-        imagePoolSize.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        imagePoolSize.descriptorCount = inputImages.size() * 5;
-
-        std::vector<VkDescriptorPoolSize> poolSizes = {imagePoolSize};
-
-        descriptorPool = createDescriptorPool(pLogicalDevice, poolSizes);
-        Logger::debug("created descriptorPool");
 
         // get config options
         struct SmaaOptions
@@ -111,57 +45,133 @@ namespace vkBasalt
             int32_t maxSearchStepsDiag;
             int32_t cornerRounding;
         };
+    } // namespace
 
-        SmaaOptions smaaOptions;
-        smaaOptions.threshold          = pConfig->getOption<float>("smaaThreshold", 0.05f);
-        smaaOptions.maxSearchSteps     = pConfig->getOption<int32_t>("smaaMaxSearchSteps", 32);
-        smaaOptions.maxSearchStepsDiag = pConfig->getOption<int32_t>("smaaMaxSearchStepsDiag", 16);
-        smaaOptions.cornerRounding     = pConfig->getOption<int32_t>("smaaCornerRounding", 25);
+    SmaaEffect::SmaaEffect(LogicalDevice*           pLogicalDevice,
+                           VkFormat                 format,
+                           VkExtent2D               imageExtent,
+                           std::span<const VkImage> inputImages,
+                           std::span<const VkImage> outputImages,
+                           Config*                  pConfig) :
+        pLogicalDevice{pLogicalDevice}, inputImages(std::cbegin(inputImages), std::cend(inputImages)),
+        outputImages(std::cbegin(outputImages), std::cend(outputImages)), imageExtent{imageExtent}, format{format}, sampler(createSampler(pLogicalDevice)), pConfig{pConfig}
+    {
+        Logger::debug("in creating SmaaEffect");
 
-        createShaderModule(pLogicalDevice, smaa_edge_vert, &edgeVertexModule);
+        // create Images for the first and second pass at once -> less memory fragmentation
+        const auto edgeAndBlendImages = createImages(pLogicalDevice,
+                                                     std::size(inputImages) * 2,
+                                                     {.width = imageExtent.width, .height = imageExtent.height, .depth = 1},
+                                                     VK_FORMAT_B8G8R8A8_UNORM, // TODO search for format and save it
+                                                     VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                                                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                                     imageMemory);
 
-        bool useColor = pConfig->getOption<std::string>("smaaEdgeDetection", "luma") == "color";
+        edgeImages.assign(std::cbegin(edgeAndBlendImages), std::next(std::cbegin(edgeAndBlendImages), std::size(edgeAndBlendImages) / 2U));
+        blendImages.assign(std::next(std::cbegin(edgeAndBlendImages), std::size(edgeAndBlendImages) / 2U), std::cend(edgeAndBlendImages));
 
-        useColor ? createShaderModule(pLogicalDevice, smaa_edge_color_frag, &edgeFragmentModule)
-                 : createShaderModule(pLogicalDevice, smaa_edge_luma_frag, &edgeFragmentModule);
+        inputImageViews = createImageViews(pLogicalDevice, format, inputImages);
+        Logger::debug("created input ImageViews");
+        edgeImageViews = createImageViews(pLogicalDevice, VK_FORMAT_B8G8R8A8_UNORM, edgeImages);
+        Logger::debug("created edge  ImageViews");
+        blendImageViews = createImageViews(pLogicalDevice, VK_FORMAT_B8G8R8A8_UNORM, blendImages);
+        Logger::debug("created blend ImageViews");
+        outputImageViews = createImageViews(pLogicalDevice, format, outputImages);
+        Logger::debug("created output ImageViews");
+        
+        Logger::debug("created sampler");
 
-        createShaderModule(pLogicalDevice, smaa_blend_vert, &blendVertexModule);
+        const VkExtent3D areaImageExtent = {.width = AREATEX_WIDTH, .height = AREATEX_HEIGHT, .depth = 1};
 
-        createShaderModule(pLogicalDevice, smaa_blend_frag, &blendFragmentModule);
+        areaImage = createImage(pLogicalDevice,
+                                areaImageExtent,
+                                VK_FORMAT_R8G8_UNORM, // TODO search for format and save it
+                                VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                areaMemory);
 
-        createShaderModule(pLogicalDevice, smaa_neighbor_vert, &neighborVertexModule);
+        const VkExtent3D searchImageExtent = {.width = SEARCHTEX_WIDTH, .height = SEARCHTEX_HEIGHT, .depth = 1};
 
-        createShaderModule(pLogicalDevice, smaa_neighbor_frag, &neignborFragmentModule);
+        searchImage = createImage(pLogicalDevice,
+                                  searchImageExtent,
+                                  VK_FORMAT_R8_UNORM, // TODO search for format and save it
+                                  VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                  searchMemory);
+
+        uploadToImage(pLogicalDevice, areaImage, areaImageExtent, AREATEX_SIZE, areaTexBytes);
+
+        uploadToImage(pLogicalDevice, searchImage, searchImageExtent, SEARCHTEX_SIZE, searchTexBytes);
+
+        areaImageView = createImageView(pLogicalDevice, VK_FORMAT_R8G8_UNORM, areaImage);
+        Logger::debug("after creating area ImageView");
+        searchImageView = createImageView(pLogicalDevice, VK_FORMAT_R8_UNORM, searchImage);
+        Logger::debug("created search ImageView");
+
+        constexpr static uint32_t descriptorSetLayoutsCount{5};
+        imageSamplerDescriptorSetLayout = createImageSamplerDescriptorSetLayout(pLogicalDevice, descriptorSetLayoutsCount);
+        Logger::debug("created descriptorSetLayouts");
+
+        const VkDescriptorPoolSize imagePoolSize{.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                 .descriptorCount = static_cast<uint32_t>(std::size(inputImages) * descriptorSetLayoutsCount)};
+
+        descriptorPool = createDescriptorPool(pLogicalDevice, std::span{std::addressof(imagePoolSize), 1U});
+        Logger::debug("created descriptorPool");
+
+        createShaderModule(pLogicalDevice, smaa_edge_vert, std::addressof(edgeVertexModule));
+
+        const auto useColor = pConfig->getOption<std::string>("smaaEdgeDetection", "luma") == "color";
+
+        useColor ? createShaderModule(pLogicalDevice, smaa_edge_color_frag, std::addressof(edgeFragmentModule))
+                 : createShaderModule(pLogicalDevice, smaa_edge_luma_frag, std::addressof(edgeFragmentModule));
+
+        createShaderModule(pLogicalDevice, smaa_blend_vert, std::addressof(blendVertexModule));
+
+        createShaderModule(pLogicalDevice, smaa_blend_frag, std::addressof(blendFragmentModule));
+
+        createShaderModule(pLogicalDevice, smaa_neighbor_vert, std::addressof(neighborVertexModule));
+
+        createShaderModule(pLogicalDevice, smaa_neighbor_frag, std::addressof(neignborFragmentModule));
 
         renderPass      = createRenderPass(pLogicalDevice, format);
         unormRenderPass = createRenderPass(pLogicalDevice, VK_FORMAT_B8G8R8A8_UNORM);
+        pipelineLayout  = createGraphicsPipelineLayout(pLogicalDevice, std::span{std::addressof(imageSamplerDescriptorSetLayout), 1U});
 
-        std::vector<VkDescriptorSetLayout> descriptorSetLayouts = {imageSamplerDescriptorSetLayout};
-        pipelineLayout                                          = createGraphicsPipelineLayout(pLogicalDevice, descriptorSetLayouts);
+        const SmaaOptions smaaOptions{
+            .screenWidth         = static_cast<float>(imageExtent.width),
+            .screenHeight        = static_cast<float>(imageExtent.height),
+            .reverseScreenWidth  = 1.0F / imageExtent.width,
+            .reverseScreenHeight = 1.0F / imageExtent.height,
+            .threshold           = pConfig->getOption<float>("smaaThreshold", 0.05F),
+            .maxSearchSteps      = pConfig->getOption<int32_t>("smaaMaxSearchSteps", 32),
+            .maxSearchStepsDiag  = pConfig->getOption<int32_t>("smaaMaxSearchStepsDiag", 16),
+            .cornerRounding      = pConfig->getOption<int32_t>("smaaCornerRounding", 25),
+        };
 
-        std::vector<VkSpecializationMapEntry> specMapEntrys(8);
-        for (uint32_t i = 0; i < specMapEntrys.size(); i++)
-        {
-            specMapEntrys[i].constantID = i;
-            specMapEntrys[i].offset     = sizeof(float) * i; // TODO not clean to assume that sizeof(int32_t) == sizeof(float)
-            specMapEntrys[i].size       = sizeof(float);
-        }
-        smaaOptions.screenWidth = (float) imageExtent.width, smaaOptions.screenHeight = (float) imageExtent.height,
-        smaaOptions.reverseScreenWidth  = 1.0f / imageExtent.width;
-        smaaOptions.reverseScreenHeight = 1.0f / imageExtent.height;
+        constexpr static auto specMapEntrys{[] {
+            constexpr static auto                                        smaaOptionsFieldsCount{8U};
+            std::array<VkSpecializationMapEntry, smaaOptionsFieldsCount> specMapEntrys{};
+            for (auto [idx, specMapEntry] : specMapEntrys | std::views::enumerate)
+            {
+                specMapEntry = {.constantID = static_cast<uint32_t>(idx),
+                                .offset =
+                                    static_cast<uint32_t>(sizeof(float) * idx), // TODO not clean to assume that sizeof(int32_t) == sizeof(float)
+                                .size = sizeof(float)};
+            }
+            return specMapEntrys;
+        }()};
 
-        VkSpecializationInfo specializationInfo;
-        specializationInfo.mapEntryCount = specMapEntrys.size();
-        specializationInfo.pMapEntries   = specMapEntrys.data();
-        specializationInfo.dataSize      = sizeof(smaaOptions);
-        specializationInfo.pData         = &smaaOptions;
+        const VkSpecializationInfo specializationInfo{.mapEntryCount = std::size(specMapEntrys),
+                                                      .pMapEntries   = std::data(specMapEntrys),
+                                                      .dataSize      = sizeof(SmaaOptions),
+                                                      .pData         = std::addressof(smaaOptions)};
 
         edgePipeline = createGraphicsPipeline(pLogicalDevice,
                                               edgeVertexModule,
-                                              &specializationInfo,
+                                              std::addressof(specializationInfo),
                                               "main",
                                               edgeFragmentModule,
-                                              &specializationInfo,
+                                              std::addressof(specializationInfo),
                                               "main",
                                               imageExtent,
                                               unormRenderPass,
@@ -169,10 +179,10 @@ namespace vkBasalt
 
         blendPipeline = createGraphicsPipeline(pLogicalDevice,
                                                blendVertexModule,
-                                               &specializationInfo,
+                                               std::addressof(specializationInfo),
                                                "main",
                                                blendFragmentModule,
-                                               &specializationInfo,
+                                               std::addressof(specializationInfo),
                                                "main",
                                                imageExtent,
                                                unormRenderPass,
@@ -180,25 +190,25 @@ namespace vkBasalt
 
         neighborPipeline = createGraphicsPipeline(pLogicalDevice,
                                                   neighborVertexModule,
-                                                  &specializationInfo,
+                                                  std::addressof(specializationInfo),
                                                   "main",
                                                   neignborFragmentModule,
-                                                  &specializationInfo,
+                                                  std::addressof(specializationInfo),
                                                   "main",
                                                   imageExtent,
                                                   renderPass,
                                                   pipelineLayout);
 
-        std::vector<std::vector<VkImageView>> imageViewsVector = {inputImageViews,
-                                                                  edgeImageViews,
-                                                                  std::vector<VkImageView>(inputImageViews.size(), areaImageView),
-                                                                  std::vector<VkImageView>(inputImageViews.size(), searchImageView),
-                                                                  blendImageViews};
+        const auto imageViewsVector = {inputImageViews,
+                                       edgeImageViews,
+                                       std::vector<VkImageView>(std::size(inputImageViews), areaImageView),
+                                       std::vector<VkImageView>(std::size(inputImageViews), searchImageView),
+                                       blendImageViews};
 
         imageDescriptorSets = allocateAndWriteImageSamplerDescriptorSets(pLogicalDevice,
                                                                          descriptorPool,
                                                                          imageSamplerDescriptorSetLayout,
-                                                                         std::vector<VkSampler>(imageViewsVector.size(), sampler),
+                                                                         std::vector<VkSampler>(std::size(imageViewsVector), sampler),
                                                                          imageViewsVector);
 
         edgeFramebuffers     = createFramebuffers(pLogicalDevice, unormRenderPass, imageExtent, {edgeImageViews});
@@ -207,64 +217,66 @@ namespace vkBasalt
     }
     void SmaaEffect::applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer)
     {
+        if (std::size(inputImages) <= imageIndex)
+        {
+            Logger::err("imageIndex is out of range");
+            return;
+        }
+
         Logger::debug("applying smaa effect to cb " + convertToString(commandBuffer));
         // Used to make the Image accessable by the shader
-        VkImageMemoryBarrier memoryBarrier;
-        memoryBarrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        memoryBarrier.pNext               = nullptr;
-        memoryBarrier.srcAccessMask       = VK_ACCESS_MEMORY_WRITE_BIT;
-        memoryBarrier.dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
-        memoryBarrier.oldLayout           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        memoryBarrier.newLayout           = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        memoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        memoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        memoryBarrier.image               = inputImages[imageIndex];
-
-        memoryBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        memoryBarrier.subresourceRange.baseMipLevel   = 0;
-        memoryBarrier.subresourceRange.levelCount     = 1;
-        memoryBarrier.subresourceRange.baseArrayLayer = 0;
-        memoryBarrier.subresourceRange.layerCount     = 1;
+        VkImageMemoryBarrier memoryBarrier{
+            .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext               = nullptr,
+            .srcAccessMask       = VK_ACCESS_MEMORY_WRITE_BIT,
+            .dstAccessMask       = VK_ACCESS_SHADER_READ_BIT,
+            .oldLayout           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .newLayout           = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image               = inputImages[imageIndex],
+            .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1}};
 
         // Reverses the first Barrier
-        VkImageMemoryBarrier secondBarrier;
-        secondBarrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        secondBarrier.pNext               = nullptr;
-        secondBarrier.srcAccessMask       = VK_ACCESS_SHADER_READ_BIT;
-        secondBarrier.dstAccessMask       = 0;
-        secondBarrier.oldLayout           = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        secondBarrier.newLayout           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        secondBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        secondBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        secondBarrier.image               = inputImages[imageIndex];
+        const VkImageMemoryBarrier secondBarrier{
+            .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext               = nullptr,
+            .srcAccessMask       = VK_ACCESS_SHADER_READ_BIT,
+            .dstAccessMask       = 0,
+            .oldLayout           = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .newLayout           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image               = inputImages[imageIndex],
+            .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1}};
 
-        secondBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        secondBarrier.subresourceRange.baseMipLevel   = 0;
-        secondBarrier.subresourceRange.levelCount     = 1;
-        secondBarrier.subresourceRange.baseArrayLayer = 0;
-        secondBarrier.subresourceRange.layerCount     = 1;
-
-        pLogicalDevice->vkd.CmdPipelineBarrier(
-            commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
+        pLogicalDevice->vkd.CmdPipelineBarrier(commandBuffer,
+                                               VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                               VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                               0,
+                                               0,
+                                               nullptr,
+                                               0,
+                                               nullptr,
+                                               1,
+                                               std::addressof(memoryBarrier));
         Logger::debug("after the first pipeline barrier");
 
-        VkRenderPassBeginInfo renderPassBeginInfo;
-        renderPassBeginInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassBeginInfo.pNext             = nullptr;
-        renderPassBeginInfo.renderPass        = unormRenderPass;
-        renderPassBeginInfo.framebuffer       = edgeFramebuffers[imageIndex];
-        renderPassBeginInfo.renderArea.offset = {0, 0};
-        renderPassBeginInfo.renderArea.extent = imageExtent;
-        VkClearValue clearValue               = {0.0f, 0.0f, 0.0f, 1.0f};
-        renderPassBeginInfo.clearValueCount   = 1;
-        renderPassBeginInfo.pClearValues      = &clearValue;
+        const VkClearValue    clearValue = {0.0F, 0.0F, 0.0F, 1.0F};
+        VkRenderPassBeginInfo renderPassBeginInfo{.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                                                  .pNext           = nullptr,
+                                                  .renderPass      = unormRenderPass,
+                                                  .framebuffer     = edgeFramebuffers[imageIndex],
+                                                  .renderArea      = {.offset = {.x = 0, .y = 0}, .extent = imageExtent},
+                                                  .clearValueCount = 1,
+                                                  .pClearValues    = std::addressof(clearValue)};
         // edge renderPass
         Logger::debug("before beginn edge renderpass");
-        pLogicalDevice->vkd.CmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        pLogicalDevice->vkd.CmdBeginRenderPass(commandBuffer, std::addressof(renderPassBeginInfo), VK_SUBPASS_CONTENTS_INLINE);
         Logger::debug("after beginn renderpass");
 
         pLogicalDevice->vkd.CmdBindDescriptorSets(
-            commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &(imageDescriptorSets[imageIndex]), 0, nullptr);
+            commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, std::addressof(imageDescriptorSets[imageIndex]), 0, nullptr);
         Logger::debug("after binding image sampler");
 
         pLogicalDevice->vkd.CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, edgePipeline);
@@ -279,12 +291,20 @@ namespace vkBasalt
         memoryBarrier.image             = edgeImages[imageIndex];
         renderPassBeginInfo.framebuffer = blendFramebuffers[imageIndex];
         // blend renderPass
-        pLogicalDevice->vkd.CmdPipelineBarrier(
-            commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
+        pLogicalDevice->vkd.CmdPipelineBarrier(commandBuffer,
+                                               VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                               VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                               0,
+                                               0,
+                                               nullptr,
+                                               0,
+                                               nullptr,
+                                               1,
+                                               std::addressof(memoryBarrier));
         Logger::debug("after the first pipeline barrier");
 
         Logger::debug("before beginn blend renderpass");
-        pLogicalDevice->vkd.CmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        pLogicalDevice->vkd.CmdBeginRenderPass(commandBuffer, std::addressof(renderPassBeginInfo), VK_SUBPASS_CONTENTS_INLINE);
         Logger::debug("after beginn renderpass");
 
         pLogicalDevice->vkd.CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, blendPipeline);
@@ -300,12 +320,20 @@ namespace vkBasalt
         renderPassBeginInfo.framebuffer = neignborFramebuffers[imageIndex];
         renderPassBeginInfo.renderPass  = renderPass;
         // neighbor renderPass
-        pLogicalDevice->vkd.CmdPipelineBarrier(
-            commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
+        pLogicalDevice->vkd.CmdPipelineBarrier(commandBuffer,
+                                               VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                               VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                               0,
+                                               0,
+                                               nullptr,
+                                               0,
+                                               nullptr,
+                                               1,
+                                               std::addressof(memoryBarrier));
         Logger::debug("after the first pipeline barrier");
 
         Logger::debug("before beginn neighbor renderpass");
-        pLogicalDevice->vkd.CmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        pLogicalDevice->vkd.CmdBeginRenderPass(commandBuffer, std::addressof(renderPassBeginInfo), VK_SUBPASS_CONTENTS_INLINE);
         Logger::debug("after beginn renderpass");
 
         pLogicalDevice->vkd.CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, neighborPipeline);
@@ -326,7 +354,7 @@ namespace vkBasalt
                                                0,
                                                nullptr,
                                                1,
-                                               &secondBarrier);
+                                               std::addressof(secondBarrier));
         Logger::debug("after the second pipeline barrier");
     }
     SmaaEffect::~SmaaEffect()
@@ -352,18 +380,28 @@ namespace vkBasalt
         pLogicalDevice->vkd.FreeMemory(pLogicalDevice->device, imageMemory, nullptr);
         pLogicalDevice->vkd.FreeMemory(pLogicalDevice->device, areaMemory, nullptr);
         pLogicalDevice->vkd.FreeMemory(pLogicalDevice->device, searchMemory, nullptr);
-        for (unsigned int i = 0; i < edgeFramebuffers.size(); i++)
-        {
-            pLogicalDevice->vkd.DestroyFramebuffer(pLogicalDevice->device, edgeFramebuffers[i], nullptr);
-            pLogicalDevice->vkd.DestroyFramebuffer(pLogicalDevice->device, blendFramebuffers[i], nullptr);
-            pLogicalDevice->vkd.DestroyFramebuffer(pLogicalDevice->device, neignborFramebuffers[i], nullptr);
-            pLogicalDevice->vkd.DestroyImageView(pLogicalDevice->device, inputImageViews[i], nullptr);
-            pLogicalDevice->vkd.DestroyImageView(pLogicalDevice->device, edgeImageViews[i], nullptr);
-            pLogicalDevice->vkd.DestroyImageView(pLogicalDevice->device, blendImageViews[i], nullptr);
-            pLogicalDevice->vkd.DestroyImageView(pLogicalDevice->device, outputImageViews[i], nullptr);
-            pLogicalDevice->vkd.DestroyImage(pLogicalDevice->device, edgeImages[i], nullptr);
-            pLogicalDevice->vkd.DestroyImage(pLogicalDevice->device, blendImages[i], nullptr);
-        }
+
+        auto destroyFramebuffer = [pLogicalDevice = pLogicalDevice](auto& buffer) {
+            pLogicalDevice->vkd.DestroyFramebuffer(pLogicalDevice->device, buffer, nullptr);
+        };
+        std::ranges::for_each(edgeFramebuffers, destroyFramebuffer);
+        std::ranges::for_each(blendFramebuffers, destroyFramebuffer);
+        std::ranges::for_each(neignborFramebuffers, destroyFramebuffer);
+
+        auto destroyImageView = [pLogicalDevice = pLogicalDevice](auto& view) {
+            pLogicalDevice->vkd.DestroyImageView(pLogicalDevice->device, view, nullptr);
+        };
+        std::ranges::for_each(inputImageViews, destroyImageView);
+        std::ranges::for_each(edgeImageViews, destroyImageView);
+        std::ranges::for_each(blendImageViews, destroyImageView);
+        std::ranges::for_each(outputImageViews, destroyImageView);
+
+        auto destroyImage = [pLogicalDevice = pLogicalDevice](auto& image) {
+            pLogicalDevice->vkd.DestroyImage(pLogicalDevice->device, image, nullptr);
+        };
+        std::ranges::for_each(edgeImages, destroyImage);
+        std::ranges::for_each(blendImages, destroyImage);
+
         Logger::debug("after DestroyImageView");
         pLogicalDevice->vkd.DestroyImageView(pLogicalDevice->device, areaImageView, nullptr);
         pLogicalDevice->vkd.DestroyImage(pLogicalDevice->device, areaImage, nullptr);
@@ -372,4 +410,5 @@ namespace vkBasalt
 
         pLogicalDevice->vkd.DestroySampler(pLogicalDevice->device, sampler, nullptr);
     }
+
 } // namespace vkBasalt

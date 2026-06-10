@@ -1,30 +1,32 @@
 #ifndef EFFECT_FXAA_HPP_INCLUDED
 #define EFFECT_FXAA_HPP_INCLUDED
-#include <vector>
-#include <fstream>
-#include <string>
-#include <iostream>
-#include <vector>
-#include <unordered_map>
-#include <memory>
-
-#include "vulkan_include.hpp"
 
 #include "effect_simple.hpp"
 #include "config.hpp"
+#include "logical_device.hpp"
+
+#include <span>
+
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
-    class FxaaEffect : public SimpleEffect
+    class FxaaEffect final : public SimpleEffect
     {
     public:
-        FxaaEffect(LogicalDevice*       pLogicalDevice,
-                   VkFormat             format,
-                   VkExtent2D           imageExtent,
-                   std::vector<VkImage> inputImages,
-                   std::vector<VkImage> outputImages,
-                   Config*              pConfig);
-        ~FxaaEffect();
+        FxaaEffect(LogicalDevice*           pLogicalDevice,
+                   VkFormat                 format,
+                   VkExtent2D               imageExtent,
+                   std::span<const VkImage> inputImages,
+                   std::span<const VkImage> outputImages,
+                   Config*                  pConfig);
+
+        FxaaEffect(const FxaaEffect&)            = delete;
+        FxaaEffect& operator=(const FxaaEffect&) = delete;
+        FxaaEffect(FxaaEffect&&)                 = delete;
+        FxaaEffect& operator=(FxaaEffect&&)      = delete;
+
+        ~FxaaEffect() override;
     };
 } // namespace vkBasalt
 

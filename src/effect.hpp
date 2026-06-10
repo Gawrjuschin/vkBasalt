@@ -1,13 +1,9 @@
 #ifndef EFFECT_HPP_INCLUDED
 #define EFFECT_HPP_INCLUDED
-#include <vector>
-#include <fstream>
-#include <string>
-#include <iostream>
-#include <vector>
-#include <unordered_map>
 
-#include "vulkan_include.hpp"
+#include <cstdint>
+
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
@@ -16,8 +12,15 @@ namespace vkBasalt
     public:
         void virtual applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) = 0;
         void virtual updateEffect(){};
-        void virtual useDepthImage(VkImageView depthImageView){};
-        virtual ~Effect(){};
+        void virtual useDepthImage(VkImageView /*depthImageView*/){};
+
+        Effect()                         = default;
+        Effect(const Effect&)            = delete;
+        Effect& operator=(const Effect&) = delete;
+        Effect(Effect&&)                 = delete;
+        Effect& operator=(Effect&&)      = delete;
+
+        virtual ~Effect() = default;
 
     private:
     };

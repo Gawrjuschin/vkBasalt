@@ -13,13 +13,7 @@ FetchContent_Declare(
   GIT_REPOSITORY "https://github.com/crosire/reshade.git"
   GIT_TAG "v4.9.0") # max supported by vkBasalt version now
 
-FetchContent_Declare(
-  stb
-  GIT_REPOSITORY "https://github.com/nothings/stb.git"
-  GIT_TAG "master")
-
 FetchContent_Populate(reshade)
-FetchContent_Populate(stb)
 
 add_library(vkBasalt_reshade OBJECT)
 

@@ -1,7 +1,11 @@
 #include "config.hpp"
 
 #include <sstream>
+#include <fstream>
 #include <locale>
+#include <array>
+
+#include <logger.hpp>
 
 namespace vkBasalt
 {
@@ -45,12 +49,7 @@ namespace vkBasalt
         Logger::err("no good config file");
     }
 
-    Config::Config(const Config& other)
-    {
-        this->options = other.options;
-    }
-
-    void Config::readConfigFile(std::ifstream& stream)
+    void Config::readConfigFile(std::istream& stream)
     {
         std::string line;
 
@@ -98,7 +97,7 @@ namespace vkBasalt
 
     BREAK:
 
-        if (!key.empty() && !value.empty())
+        if (not std::empty(key) && not std::empty(value))
         {
             Logger::info(key + " = " + value);
             options[key] = value;
@@ -136,7 +135,7 @@ namespace vkBasalt
 
             std::string rest;
             ss >> rest;
-            if (failed || (!rest.empty() && rest != "f"))
+            if (failed || (not std::empty(rest) && rest != "f"))
             {
                 Logger::warn("invalid float value for: " + option);
             }

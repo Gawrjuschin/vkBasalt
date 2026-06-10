@@ -1,17 +1,13 @@
 #ifndef LOGICAL_SWAPCHAIN_HPP_INCLUDED
 #define LOGICAL_SWAPCHAIN_HPP_INCLUDED
-#include <vector>
-#include <fstream>
-#include <string>
-#include <iostream>
-#include <vector>
-#include <memory>
 
 #include "effect.hpp"
-
-#include "vulkan_include.hpp"
-
 #include "logical_device.hpp"
+
+#include <cstdint>
+#include <vector>
+#include <memory>
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
@@ -28,8 +24,8 @@ namespace vkBasalt
         std::vector<VkCommandBuffer>         commandBuffersEffect;
         std::vector<VkCommandBuffer>         commandBuffersNoEffect;
         std::vector<VkSemaphore>             semaphores;
-        std::vector<std::shared_ptr<Effect>> effects;
-        std::shared_ptr<Effect>              defaultTransfer;
+        std::vector<std::unique_ptr<Effect>> effects;
+        std::unique_ptr<Effect>              defaultTransfer;
         VkDeviceMemory                       fakeImageMemory;
 
         void destroy();

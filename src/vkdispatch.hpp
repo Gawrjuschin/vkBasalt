@@ -1,8 +1,9 @@
-#pragma once
-
-#include "vulkan_include.hpp"
+#ifndef VKBASALT_VKDISPACTCH_HPP
+#define VKBASALT_VKDISPACTCH_HPP
 
 #include "vkfuncs.hpp"
+
+#include <vulkan/vulkan_core.h>
 
 #define FORVKFUNC(func) PFN_vk##func func = nullptr;
 
@@ -27,3 +28,5 @@ namespace vkBasalt
 #undef FORVKFUNC
 #undef VK_INSTANCE_FUNCS
 #undef VK_DEVICE_FUNCS
+
+#endif // VKBASALT_VKDISPACTCH_HPP

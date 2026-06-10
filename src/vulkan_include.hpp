@@ -1,24 +1,24 @@
 #ifndef VULKAN_INCLUDE_HPP_INCLUDED
 #define VULKAN_INCLUDE_HPP_INCLUDED
 
+#include <string>
 #define VK_NO_PROTOTYPES
 
-#include <vulkan/vulkan.h>
-#include <vulkan/vk_layer.h>
-
-#include <string>
+#include <vulkan/vulkan_core.h>
 
 #include <logger.hpp>
 
-#ifndef ASSERT_VULKAN
-#define ASSERT_VULKAN(val) \
-    if (val != VK_SUCCESS) \
-    { \
-        Logger::err("ASSERT_VULKAN failed in " + std::string(__FILE__) + " : " + std::to_string(__LINE__) + "; " + std::to_string(val)); \
-    }
-#endif
 namespace vkBasalt
 {
+
+    inline void AssertVulkan(VkResult val)
+    {
+        if (val != VkResult::VK_SUCCESS)
+        {
+            Logger::err("ASSERT_VULKAN failed in " + std::string(__FILE__) + " : " + std::to_string(__LINE__) + "; " + std::to_string(val));
+        }
+    }
+
     template<typename DispatchableType, typename SuperDispatchableType>
     inline void initializeDispatchTable(DispatchableType dispatchableObject, SuperDispatchableType source)
     {

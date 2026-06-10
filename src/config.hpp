@@ -1,14 +1,11 @@
 #ifndef CONFIG_HPP_INCLUDED
 #define CONFIG_HPP_INCLUDED
-#include <vector>
-#include <fstream>
-#include <string>
-#include <iostream>
-#include <vector>
-#include <unordered_map>
-#include <cstdlib>
 
-#include "vulkan_include.hpp"
+#include <cstdint>
+#include <istream>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace vkBasalt
 {
@@ -16,7 +13,14 @@ namespace vkBasalt
     {
     public:
         Config();
-        Config(const Config& other);
+
+        Config(const Config& other)            = default;
+        Config& operator=(const Config& other) = default;
+
+        Config(Config&&)            = default;
+        Config& operator=(Config&&) = default;
+
+        ~Config() = default;
 
         template<typename T>
         T getOption(const std::string& option, const T& defaultValue = {})
@@ -30,7 +34,7 @@ namespace vkBasalt
         std::unordered_map<std::string, std::string> options;
 
         void readConfigLine(std::string line);
-        void readConfigFile(std::ifstream& stream);
+        void readConfigFile(std::istream& stream);
 
         void parseOption(const std::string& option, int32_t& result);
         void parseOption(const std::string& option, float& result);

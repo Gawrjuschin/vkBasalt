@@ -2,13 +2,11 @@
 #define UTIL_HPP_INCLUDED
 
 #include <string>
+#include <string_view>
 #include <sstream>
-#include <vector>
 
 namespace vkBasalt
 {
-    void addUniqueCString(std::vector<const char*>& stringVector, const char* addString);
-
     enum class Color
     {
         defaultColor,
@@ -23,10 +21,10 @@ namespace vkBasalt
         white
     };
 
-    void outputInColor(std::string output, Color foreground = Color::defaultColor, Color background = Color::defaultColor);
+    void outputInColor(std::string_view output, Color foreground = Color::defaultColor, Color background = Color::defaultColor);
 
     template<typename T>
-    std::string convertToString(T object)
+    std::string convertToString(const T& object)
     {
         std::stringstream ss;
         ss << object;

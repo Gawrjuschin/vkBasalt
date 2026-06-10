@@ -1,60 +1,59 @@
 #include "renderpass.hpp"
+#include "logical_device.hpp"
+#include "vulkan_include.hpp"
+#include <memory>
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
     VkRenderPass createRenderPass(LogicalDevice* pLogicalDevice, VkFormat format)
     {
-        VkRenderPass renderPass;
 
-        VkAttachmentDescription attachmentDescription;
-        attachmentDescription.flags          = 0;
-        attachmentDescription.format         = format;
-        attachmentDescription.samples        = VK_SAMPLE_COUNT_1_BIT;
-        attachmentDescription.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        attachmentDescription.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
-        attachmentDescription.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        attachmentDescription.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-        attachmentDescription.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        const VkAttachmentDescription attachmentDescription{.flags          = 0,
+                                                            .format         = format,
+                                                            .samples        = VK_SAMPLE_COUNT_1_BIT,
+                                                            .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                            .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
+                                                            .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                            .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
+                                                            .finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR};
 
-        VkAttachmentReference attachmentReference;
-        attachmentReference.attachment = 0;
-        attachmentReference.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        const VkAttachmentReference attachmentReference{.attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
 
-        VkSubpassDescription subpassDescription;
-        subpassDescription.flags                   = 0;
-        subpassDescription.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpassDescription.inputAttachmentCount    = 0;
-        subpassDescription.pInputAttachments       = nullptr;
-        subpassDescription.colorAttachmentCount    = 1;
-        subpassDescription.pColorAttachments       = &attachmentReference;
-        subpassDescription.pResolveAttachments     = nullptr;
-        subpassDescription.pDepthStencilAttachment = nullptr;
-        subpassDescription.preserveAttachmentCount = 0;
-        subpassDescription.pPreserveAttachments    = nullptr;
+        const VkSubpassDescription subpassDescription{.flags                   = 0,
+                                                      .pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                                      .inputAttachmentCount    = 0,
+                                                      .pInputAttachments       = nullptr,
+                                                      .colorAttachmentCount    = 1,
+                                                      .pColorAttachments       = std::addressof(attachmentReference),
+                                                      .pResolveAttachments     = nullptr,
+                                                      .pDepthStencilAttachment = nullptr,
+                                                      .preserveAttachmentCount = 0,
+                                                      .pPreserveAttachments    = nullptr};
 
-        VkSubpassDependency subpassDependency;
-        subpassDependency.srcSubpass      = VK_SUBPASS_EXTERNAL;
-        subpassDependency.dstSubpass      = 0;
-        subpassDependency.srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        subpassDependency.dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        subpassDependency.srcAccessMask   = 0;
-        subpassDependency.dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        subpassDependency.dependencyFlags = 0;
+        const VkSubpassDependency subpassDependency{.srcSubpass      = VK_SUBPASS_EXTERNAL,
+                                                    .dstSubpass      = 0,
+                                                    .srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                    .dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                    .srcAccessMask   = 0,
+                                                    .dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                                    .dependencyFlags = 0};
 
-        VkRenderPassCreateInfo renderPassCreateInfo;
-        renderPassCreateInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        renderPassCreateInfo.pNext           = nullptr;
-        renderPassCreateInfo.flags           = 0;
-        renderPassCreateInfo.attachmentCount = 1;
-        renderPassCreateInfo.pAttachments    = &attachmentDescription;
-        renderPassCreateInfo.subpassCount    = 1;
-        renderPassCreateInfo.pSubpasses      = &subpassDescription;
-        renderPassCreateInfo.dependencyCount = 1;
-        renderPassCreateInfo.pDependencies   = &subpassDependency;
+        const VkRenderPassCreateInfo renderPassCreateInfo{.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+                                                          .pNext           = nullptr,
+                                                          .flags           = 0,
+                                                          .attachmentCount = 1,
+                                                          .pAttachments    = std::addressof(attachmentDescription),
+                                                          .subpassCount    = 1,
+                                                          .pSubpasses      = std::addressof(subpassDescription),
+                                                          .dependencyCount = 1,
+                                                          .pDependencies   = std::addressof(subpassDependency)};
 
-        VkResult result = pLogicalDevice->vkd.CreateRenderPass(pLogicalDevice->device, &renderPassCreateInfo, nullptr, &renderPass);
-        ASSERT_VULKAN(result);
+        VkRenderPass renderPass{};
+        const auto   result =
+            pLogicalDevice->vkd.CreateRenderPass(pLogicalDevice->device, std::addressof(renderPassCreateInfo), nullptr, std::addressof(renderPass));
+        AssertVulkan(result);
 
         return renderPass;
     }

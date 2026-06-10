@@ -1,28 +1,33 @@
-#pragma once
-#include <vector>
-#include <fstream>
-#include <string>
-#include <iostream>
-#include <vector>
-#include <unordered_map>
-#include <memory>
-
-#include "vulkan_include.hpp"
+#ifndef VKBASALT_EFFECT_DLS_HPP
+#define VKBASALT_EFFECT_DLS_HPP
 
 #include "effect_simple.hpp"
 #include "config.hpp"
+#include "logical_device.hpp"
+
+#include <span>
+
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
-    class DlsEffect : public SimpleEffect
+    class DlsEffect final : public SimpleEffect
     {
     public:
-        DlsEffect(LogicalDevice*       pLogicalDevice,
-                  VkFormat             format,
-                  VkExtent2D           imageExtent,
-                  std::vector<VkImage> inputImages,
-                  std::vector<VkImage> outputImages,
-                  Config*              pConfig);
-        ~DlsEffect();
+        DlsEffect(LogicalDevice*           pLogicalDevice,
+                  VkFormat                 format,
+                  VkExtent2D               imageExtent,
+                  std::span<const VkImage> inputImages,
+                  std::span<const VkImage> outputImages,
+                  Config*                  pConfig);
+
+        DlsEffect(const DlsEffect&)            = delete;
+        DlsEffect& operator=(const DlsEffect&) = delete;
+        DlsEffect(DlsEffect&&)                 = delete;
+        DlsEffect& operator=(DlsEffect&&)      = delete;
+
+        ~DlsEffect() override;
     };
 } // namespace vkBasalt
+
+#endif // VKBASALT_EFFECT_DLS_HPP

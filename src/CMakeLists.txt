@@ -69,7 +69,6 @@ target_sources(
           ${CMAKE_CURRENT_LIST_DIR}/effect_transfer.hpp
           ${CMAKE_CURRENT_LIST_DIR}/effect_transfer.cpp
           ${CMAKE_CURRENT_LIST_DIR}/effect.hpp
-          ${CMAKE_CURRENT_LIST_DIR}/effect.cpp
           ${CMAKE_CURRENT_LIST_DIR}/fake_swapchain.hpp
           ${CMAKE_CURRENT_LIST_DIR}/fake_swapchain.cpp
           ${CMAKE_CURRENT_LIST_DIR}/format.hpp

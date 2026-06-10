@@ -1,35 +1,39 @@
 #ifndef EFFECT_LUT_HPP_INCLUDED
 #define EFFECT_LUT_HPP_INCLUDED
-#include <vector>
-#include <fstream>
-#include <string>
-#include <iostream>
-#include <vector>
-#include <unordered_map>
-#include <memory>
-
-#include "vulkan_include.hpp"
 
 #include "effect_simple.hpp"
 #include "config.hpp"
+#include "logical_device.hpp"
+
+#include <cstdint>
+#include <span>
+
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {
-    class LutEffect : public SimpleEffect
+    class LutEffect final : public SimpleEffect
     {
     public:
-        LutEffect(LogicalDevice*       pLogicalDevice,
-                  VkFormat             format,
-                  VkExtent2D           imageExtent,
-                  std::vector<VkImage> inputImages,
-                  std::vector<VkImage> outputImages,
-                  Config*              pConfig);
-        ~LutEffect();
+        LutEffect(LogicalDevice*           pLogicalDevice,
+                  VkFormat                 format,
+                  VkExtent2D               imageExtent,
+                  std::span<const VkImage> inputImages,
+                  std::span<const VkImage> outputImages,
+                  Config*                  pConfig);
+
+        LutEffect(const LutEffect&)            = delete;
+        LutEffect& operator=(const LutEffect&) = delete;
+        LutEffect(LutEffect&&)                 = delete;
+        LutEffect& operator=(LutEffect&&)      = delete;
+
+        ~LutEffect() override;
+
         void applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
 
     private:
         VkImage               lutImage;
-        VkDeviceMemory        lutMemory;
+        VkDeviceMemory        lutMemory{};
         VkImageView           lutImageView;
         VkDescriptorSetLayout lutDescriptorSetLayout;
         VkDescriptorPool      lutDescriptorPool;

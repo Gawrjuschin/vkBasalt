@@ -3,8 +3,8 @@
 
 #include <span>
 #include <cstdint>
+#include <vulkan/vulkan_core.h>
 
-#include "vulkan_include.hpp"
 #include "logical_device.hpp"
 
 namespace vkBasalt

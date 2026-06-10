@@ -1,50 +1,41 @@
 #include "effect_cas.hpp"
-
-#include <cstring>
-
-#include "image_view.hpp"
-#include "descriptor_set.hpp"
-#include "buffer.hpp"
-#include "renderpass.hpp"
-#include "graphics_pipeline.hpp"
-#include "framebuffer.hpp"
-#include "shader.hpp"
-#include "sampler.hpp"
-
+#include "logical_device.hpp"
+#include "config.hpp"
 #include "shader_sources.hpp"
+#include <memory>
+#include <vulkan/vulkan_core.h>
+#include <span>
 
 namespace vkBasalt
 {
-    CasEffect::CasEffect(LogicalDevice*       pLogicalDevice,
-                         VkFormat             format,
-                         VkExtent2D           imageExtent,
-                         std::vector<VkImage> inputImages,
-                         std::vector<VkImage> outputImages,
-                         Config*              pConfig)
+    CasEffect::CasEffect(LogicalDevice*           pLogicalDevice,
+                         VkFormat                 format,
+                         VkExtent2D               imageExtent,
+                         std::span<const VkImage> inputImages,
+                         std::span<const VkImage> outputImages,
+                         Config*                  pConfig)
     {
 
-        float sharpness = pConfig->getOption<float>("casSharpness", 0.4f);
+        const auto sharpness = pConfig->getOption<float>("casSharpness", 0.4F);
 
         vertexCode   = full_screen_triangle_vert;
         fragmentCode = cas_frag;
 
-        VkSpecializationMapEntry sharpnessMapEntry;
-        sharpnessMapEntry.constantID = 0;
-        sharpnessMapEntry.offset     = 0;
-        sharpnessMapEntry.size       = sizeof(float);
+        constexpr static VkSpecializationMapEntry sharpnessMapEntry{
+            .constantID = 0,
+            .offset     = 0,
+            .size       = sizeof(float),
+        };
 
-        VkSpecializationInfo fragmentSpecializationInfo;
-        fragmentSpecializationInfo.mapEntryCount = 1;
-        fragmentSpecializationInfo.pMapEntries   = &sharpnessMapEntry;
-        fragmentSpecializationInfo.dataSize      = sizeof(float);
-        fragmentSpecializationInfo.pData         = &sharpness;
+        const VkSpecializationInfo fragmentSpecializationInfo{
+            .mapEntryCount = 1, .pMapEntries = std::addressof(sharpnessMapEntry), .dataSize = sizeof(float), .pData = std::addressof(sharpness)};
 
         pVertexSpecInfo   = nullptr;
-        pFragmentSpecInfo = &fragmentSpecializationInfo;
+        pFragmentSpecInfo = std::addressof(fragmentSpecializationInfo);
 
         init(pLogicalDevice, format, imageExtent, inputImages, outputImages, pConfig);
     }
-    CasEffect::~CasEffect()
-    {
-    }
+
+    CasEffect::~CasEffect() = default;
+
 } // namespace vkBasalt

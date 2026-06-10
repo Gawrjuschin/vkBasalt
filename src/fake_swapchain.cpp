@@ -1,83 +1,109 @@
 #include "fake_swapchain.hpp"
+#include "logical_device.hpp"
+#include "logical_swapchain.hpp"
 #include "memory.hpp"
 #include "format.hpp"
+#include "vulkan_include.hpp"
+
+#include <array>
+#include <cstdint>
+#include <iterator>
+#include <memory>
+#include <ranges>
+#include <span>
+#include <string>
+#include <vector>
+
+#include <vulkan/vulkan_core.h>
+
+#include <logger.hpp>
 
 namespace vkBasalt
 {
-    std::vector<VkImage> createFakeSwapchainImages(LogicalDevice*           pLogicalDevice,
-                                                   VkSwapchainCreateInfoKHR swapchainCreateInfo,
-                                                   uint32_t                 count,
-                                                   VkDeviceMemory&          deviceMemory)
+    std::vector<VkImage> createFakeSwapchainImages(LogicalDevice& logicalDevice, LogicalSwapchain& logicalSwapchain, uint32_t effectsCount)
     {
-        std::vector<VkImage> fakeImages(count);
+        // create 1 more set of images when we can't use the swapchain it self
+        logicalSwapchain.fakeImages.resize(logicalDevice.supportsMutableFormat ? logicalSwapchain.imageCount * effectsCount
+                                                                               : logicalSwapchain.imageCount * (effectsCount + 1U));
 
-        VkFormat srgbFormat =
-            isSRGB(swapchainCreateInfo.imageFormat) ? swapchainCreateInfo.imageFormat : convertToSRGB(swapchainCreateInfo.imageFormat);
-        VkFormat unormFormat =
-            isSRGB(swapchainCreateInfo.imageFormat) ? convertToUNORM(swapchainCreateInfo.imageFormat) : swapchainCreateInfo.imageFormat;
+        const auto srgbFormat  = isSRGB(logicalSwapchain.swapchainCreateInfo.imageFormat)
+                                     ? logicalSwapchain.swapchainCreateInfo.imageFormat
+                                     : convertToSRGB(logicalSwapchain.swapchainCreateInfo.imageFormat);
+        const auto unormFormat = isSRGB(logicalSwapchain.swapchainCreateInfo.imageFormat)
+                                     ? convertToUNORM(logicalSwapchain.swapchainCreateInfo.imageFormat)
+                                     : logicalSwapchain.swapchainCreateInfo.imageFormat;
 
-        VkFormat formats[] = {unormFormat, srgbFormat};
+        const std::array formats{unormFormat, srgbFormat};
 
-        VkImageFormatListCreateInfoKHR imageFormatListCreateInfo;
-        imageFormatListCreateInfo.sType           = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR;
-        imageFormatListCreateInfo.pNext           = nullptr;
-        imageFormatListCreateInfo.viewFormatCount = 2;
-        imageFormatListCreateInfo.pViewFormats    = formats;
+        VkImageFormatListCreateInfoKHR imageFormatListCreateInfo{.sType           = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR,
+                                                                 .pNext           = nullptr,
+                                                                 .viewFormatCount = std::size(formats),
+                                                                 .pViewFormats    = std::data(formats)};
 
-        VkImageCreateInfo imageCreateInfo;
-        imageCreateInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageCreateInfo.pNext         = (unormFormat == srgbFormat) ? nullptr : &imageFormatListCreateInfo;
-        imageCreateInfo.flags         = (unormFormat == srgbFormat) ? 0 : VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
-        imageCreateInfo.imageType     = VK_IMAGE_TYPE_2D;
-        imageCreateInfo.format        = swapchainCreateInfo.imageFormat;
-        imageCreateInfo.extent.width  = swapchainCreateInfo.imageExtent.width;
-        imageCreateInfo.extent.height = swapchainCreateInfo.imageExtent.height;
-        imageCreateInfo.extent.depth  = 1;
-        imageCreateInfo.mipLevels     = 1;
-        imageCreateInfo.arrayLayers   = swapchainCreateInfo.imageArrayLayers;
-        imageCreateInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
-        imageCreateInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
-        imageCreateInfo.usage         = swapchainCreateInfo.imageUsage | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-                                | VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // TODO what usage do we need?
-        imageCreateInfo.sharingMode           = swapchainCreateInfo.imageSharingMode;
-        imageCreateInfo.queueFamilyIndexCount = swapchainCreateInfo.queueFamilyIndexCount;
-        imageCreateInfo.pQueueFamilyIndices   = swapchainCreateInfo.pQueueFamilyIndices;
-        imageCreateInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
+        const VkImageCreateInfo imageCreateInfo{
+            .sType       = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .pNext       = (unormFormat == srgbFormat) ? nullptr : std::addressof(imageFormatListCreateInfo),
+            .flags       = static_cast<VkImageCreateFlags>((unormFormat == srgbFormat) ? 0 : VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT),
+            .imageType   = VK_IMAGE_TYPE_2D,
+            .format      = logicalSwapchain.swapchainCreateInfo.imageFormat,
+            .extent      = {.width  = logicalSwapchain.swapchainCreateInfo.imageExtent.width,
+                            .height = logicalSwapchain.swapchainCreateInfo.imageExtent.height,
+                            .depth  = 1},
+            .mipLevels   = 1,
+            .arrayLayers = logicalSwapchain.swapchainCreateInfo.imageArrayLayers,
+            .samples     = VK_SAMPLE_COUNT_1_BIT,
+            .tiling      = VK_IMAGE_TILING_OPTIMAL,
+            .usage       = logicalSwapchain.swapchainCreateInfo.imageUsage | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                     | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, // TODO what usage do we need?
+            .sharingMode           = logicalSwapchain.swapchainCreateInfo.imageSharingMode,
+            .queueFamilyIndexCount = logicalSwapchain.swapchainCreateInfo.queueFamilyIndexCount,
+            .pQueueFamilyIndices   = logicalSwapchain.swapchainCreateInfo.pQueueFamilyIndices,
+            .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED};
 
-        VkResult result;
-        for (uint32_t i = 0; i < count; i++)
+        for (auto& fakeImage : logicalSwapchain.fakeImages)
         {
-            result = pLogicalDevice->vkd.CreateImage(pLogicalDevice->device, &imageCreateInfo, nullptr, &(fakeImages[i]));
-            ASSERT_VULKAN(result);
+            const auto result =
+                logicalDevice.vkd.CreateImage(logicalDevice.device, std::addressof(imageCreateInfo), nullptr, std::addressof(fakeImage));
+            AssertVulkan(result);
         }
 
         // Allocate a bunch of memory for all images at one
         VkMemoryRequirements memoryRequirements;
-        pLogicalDevice->vkd.GetImageMemoryRequirements(pLogicalDevice->device, fakeImages[0], &memoryRequirements);
+        logicalDevice.vkd.GetImageMemoryRequirements(logicalDevice.device, logicalSwapchain.fakeImages.front(), std::addressof(memoryRequirements));
 
         Logger::debug("fake image size: " + std::to_string(memoryRequirements.size));
         Logger::debug("fake image alignment: " + std::to_string(memoryRequirements.alignment));
 
         if (memoryRequirements.size % memoryRequirements.alignment != 0)
         {
-            memoryRequirements.size = (memoryRequirements.size / memoryRequirements.alignment + 1) * memoryRequirements.alignment;
+            memoryRequirements.size = ((memoryRequirements.size / memoryRequirements.alignment) + 1) * memoryRequirements.alignment;
         }
 
-        VkMemoryAllocateInfo memoryAllocateInfo;
-        memoryAllocateInfo.sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        memoryAllocateInfo.pNext          = nullptr;
-        memoryAllocateInfo.allocationSize = memoryRequirements.size * count;
-        memoryAllocateInfo.memoryTypeIndex =
-            findMemoryTypeIndex(pLogicalDevice, memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        const VkMemoryAllocateInfo memoryAllocateInfo{
+            .sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .pNext          = nullptr,
+            .allocationSize = memoryRequirements.size * std::size(logicalSwapchain.fakeImages),
+            .memoryTypeIndex =
+                findMemoryTypeIndex(std::addressof(logicalDevice), memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)};
 
-        result = pLogicalDevice->vkd.AllocateMemory(pLogicalDevice->device, &memoryAllocateInfo, nullptr, &deviceMemory);
-        ASSERT_VULKAN(result);
+        const auto result = logicalDevice.vkd.AllocateMemory(
+            logicalDevice.device, std::addressof(memoryAllocateInfo), nullptr, std::addressof(logicalSwapchain.fakeImageMemory));
+        AssertVulkan(result);
 
-        for (uint32_t i = 0; i < count; i++)
+        for (auto [idx, fakeImage] : std::views::enumerate(logicalSwapchain.fakeImages))
         {
-            result = pLogicalDevice->vkd.BindImageMemory(pLogicalDevice->device, fakeImages[i], deviceMemory, memoryRequirements.size * i);
-            ASSERT_VULKAN(result);
+            const auto memoryOffset{memoryRequirements.size * idx};
+            const auto result = logicalDevice.vkd.BindImageMemory(logicalDevice.device, fakeImage, logicalSwapchain.fakeImageMemory, memoryOffset);
+            AssertVulkan(result);
         }
+
+        // NOTICE: LogicalSwapchain frees all fakeImages that cause double free if we just write logicalSwapchain.images after fake ones.
+        std::vector<VkImage> fakeImages = logicalSwapchain.fakeImages;
+        if (logicalDevice.supportsMutableFormat)
+        {
+            fakeImages.insert(std::end(fakeImages), std::cbegin(logicalSwapchain.images), std::cend(logicalSwapchain.images));
+        }
+
         return fakeImages;
     }
 } // namespace vkBasalt

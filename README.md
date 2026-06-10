@@ -27,9 +27,9 @@ This is one of my first projects ever, so expect it to have bugs. Use it at your
 ### Dependencies
 Before building, you will need:
 - CMake >= 4.1 (for proper GNUInstallDirs)
-- GCC >= 12
+- GCC >= 14
 - X11 development files
-- glslang
+- glslc
 - SPIR-V Headers
 - Vulkan Headers
 

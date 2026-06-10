@@ -1,36 +1,105 @@
+#include <iterator>
 #include <logger.hpp>
-
+#include <array>
+#include <cstdio>
 #include <cstdlib>
-
+#include <exception>
+#include <fstream>
+#include <iostream>
+#include <memory>
+#include <mutex>
+#include <ostream>
 #include <sstream>
+#include <string>
+#include <string_view>
+#include <utility>
 
 namespace vkBasalt
 {
+    namespace
+    {
+        std::string GetFileName() noexcept
+        {
+            constexpr static auto             defaultValue{"stderr"};
+            const char*                       envVar = std::getenv("VKBASALT_LOG_FILE");
 
-    Logger::Logger() : m_minLevel(getMinLogLevel())
+            if (envVar == nullptr)
+            {
+                return defaultValue;
+            }
+
+            std::string value{envVar};
+            if (std::empty(value))
+            {
+                return defaultValue;
+            }
+
+            return value;
+        }
+
+        LogLevel getMinLogLevel() noexcept
+        {
+            constexpr static std::array<std::pair<std::string_view, LogLevel>, 6> logLevels = {{
+                {"trace", LogLevel::Trace},
+                {"debug", LogLevel::Debug},
+                {"info", LogLevel::Info},
+                {"warn", LogLevel::Warn},
+                {"error", LogLevel::Error},
+                {"none", LogLevel::None},
+            }};
+
+            const char* envVar = std::getenv("VKBASALT_LOG_LEVEL");
+            if (envVar == nullptr || std::empty(std::string_view{envVar}))
+            {
+                return LogLevel::Info;
+            }
+
+            for (const auto& [str, num] : logLevels)
+            {
+                if (envVar == str)
+                {
+                    return num;
+                }
+            }
+
+            return LogLevel::Info;
+        }
+    } // namespace
+
+    Logger::Logger() noexcept
+    try : m_minLevel{getMinLogLevel()}
     {
         if (m_minLevel != LogLevel::None)
         {
-            std::string filename = getFileName();
+            auto filename = GetFileName();
             if (filename == "stderr")
             {
-                m_outStream = std::unique_ptr<std::ostream, std::function<void(std::ostream*)>>(&std::cerr, [](std::ostream*) {});
+                m_outStream = std::addressof(std::cerr);
             }
             else if (filename == "stdout")
             {
-                m_outStream = std::unique_ptr<std::ostream, std::function<void(std::ostream*)>>(&std::cout, [](std::ostream*) {});
+                m_outStream = std::addressof(std::cout);
             }
             else
             {
-                m_outStream = std::unique_ptr<std::ostream, std::function<void(std::ostream*)>>(new std::ofstream(filename),
-                                                                                                [](std::ostream* os) { delete os; });
+                m_fileStream.open(filename);
+                m_outStream = std::addressof(m_fileStream);
             }
+            return;
         }
     }
-
-    Logger::~Logger()
+    catch (const std::exception& ex)
     {
+        std::ignore = std::fprintf(stderr, "exception on logger creation: %s", ex.what());
+        std::exit(EXIT_FAILURE);
     }
+    catch (...)
+    {
+        std::ignore = std::fprintf(stderr, "exception on logger creation: UNKNOWN");
+        std::exit(EXIT_FAILURE);
+    }
+
+    Logger::~Logger() = default;
 
     void Logger::trace(const std::string& message)
     {
@@ -66,59 +135,24 @@ namespace vkBasalt
     {
         if (level >= m_minLevel)
         {
-            std::lock_guard<std::mutex> lock(m_mutex);
+            using namespace std::string_view_literals;
 
-            static std::array<const char*, 5> s_prefixes = {
-                {"vkBasalt trace: ", "vkBasalt debug: ", "vkBasalt info:  ", "vkBasalt warn:  ", "vkBasalt err:   "}};
+            const std::scoped_lock lock{m_mutex};
 
-            const char* prefix = s_prefixes.at(static_cast<uint32_t>(level));
+            constexpr static std::array s_prefixes{
+                "vkBasalt trace: "sv, "vkBasalt debug: "sv, "vkBasalt info:  "sv, "vkBasalt warn:  "sv, "vkBasalt err:   "sv};
+
+            const auto prefix = s_prefixes.at(std::to_underlying(level));
 
             std::stringstream stream(message);
             std::string       line;
 
             while (std::getline(stream, line, '\n'))
             {
-                *m_outStream << prefix << line << std::endl;
+                *m_outStream << prefix << line << '\n';
             }
+            m_outStream->flush();
         }
-    }
-
-    LogLevel Logger::getMinLogLevel()
-    {
-        const std::array<std::pair<const char*, LogLevel>, 6> logLevels = {{
-            {"trace", LogLevel::Trace},
-            {"debug", LogLevel::Debug},
-            {"info", LogLevel::Info},
-            {"warn", LogLevel::Warn},
-            {"error", LogLevel::Error},
-            {"none", LogLevel::None},
-        }};
-
-        const char* envVar = getenv("VKBASALT_LOG_LEVEL");
-
-        const std::string logLevelStr = envVar ? envVar : "";
-
-        for (const auto& pair : logLevels)
-        {
-            if (logLevelStr == pair.first)
-                return pair.second;
-        }
-
-        return LogLevel::Info;
-    }
-
-    std::string Logger::getFileName()
-    {
-        const char* envVar = getenv("VKBASALT_LOG_FILE");
-
-        std::string filename = envVar ? envVar : "";
-
-        if (filename.empty())
-        {
-            filename = "stderr";
-        }
-
-        return filename;
     }
 
 } // namespace vkBasalt
