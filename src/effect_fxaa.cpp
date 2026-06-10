@@ -46,10 +46,10 @@ namespace vkBasalt
                                      static_cast<float>(imageExtent.width),
                                      static_cast<float>(imageExtent.height)};
 
-        VkSpecializationInfo fragmentSpecializationInfo{.mapEntryCount = std::size(specMapEntrys),
-                                                        .pMapEntries   = std::data(specMapEntrys),
-                                                        .dataSize      = std::span{specData}.size_bytes(),
-                                                        .pData         = std::data(specData)};
+        const VkSpecializationInfo fragmentSpecializationInfo{.mapEntryCount = std::size(specMapEntrys),
+                                                              .pMapEntries   = std::data(specMapEntrys),
+                                                              .dataSize      = std::span{specData}.size_bytes(),
+                                                              .pData         = std::data(specData)};
 
         pVertexSpecInfo   = nullptr;
         pFragmentSpecInfo = std::addressof(fragmentSpecializationInfo);

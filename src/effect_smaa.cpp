@@ -67,8 +67,8 @@ namespace vkBasalt
                                                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                                                      imageMemory);
 
-        edgeImages.assign(std::cbegin(edgeAndBlendImages), std::next(std::cbegin(edgeAndBlendImages), std::size(edgeAndBlendImages) / 2));
-        blendImages.assign(std::next(std::cbegin(edgeAndBlendImages), std::size(edgeAndBlendImages) / 2), std::cend(edgeAndBlendImages));
+        edgeImages.assign(std::cbegin(edgeAndBlendImages), std::next(std::cbegin(edgeAndBlendImages), std::size(edgeAndBlendImages) / 2U));
+        blendImages.assign(std::next(std::cbegin(edgeAndBlendImages), std::size(edgeAndBlendImages) / 2U), std::cend(edgeAndBlendImages));
 
         inputImageViews = createImageViews(pLogicalDevice, format, inputImages);
         Logger::debug("created input ImageViews");
@@ -103,20 +103,39 @@ namespace vkBasalt
 
         uploadToImage(pLogicalDevice, searchImage, searchImageExtent, SEARCHTEX_SIZE, searchTexBytes);
 
-        areaImageView = createImageViews(pLogicalDevice, VK_FORMAT_R8G8_UNORM, std::span{std::addressof(areaImage), 1U}).front();
+        areaImageView = createImageView(pLogicalDevice, VK_FORMAT_R8G8_UNORM, areaImage);
         Logger::debug("after creating area ImageView");
-        searchImageView = createImageViews(pLogicalDevice, VK_FORMAT_R8_UNORM, std::span{std::addressof(searchImage), 1U}).front();
+        searchImageView = createImageView(pLogicalDevice, VK_FORMAT_R8_UNORM, searchImage);
         Logger::debug("created search ImageView");
 
-        imageSamplerDescriptorSetLayout = createImageSamplerDescriptorSetLayout(pLogicalDevice, 5);
+        constexpr static uint32_t descriptorSetLayoutsCount{5};
+        imageSamplerDescriptorSetLayout = createImageSamplerDescriptorSetLayout(pLogicalDevice, descriptorSetLayoutsCount);
         Logger::debug("created descriptorSetLayouts");
 
-        VkDescriptorPoolSize imagePoolSize;
-        imagePoolSize.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        imagePoolSize.descriptorCount = std::size(inputImages) * 5;
+        const VkDescriptorPoolSize imagePoolSize{.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                 .descriptorCount = static_cast<uint32_t>(std::size(inputImages) * descriptorSetLayoutsCount)};
 
         descriptorPool = createDescriptorPool(pLogicalDevice, std::span{std::addressof(imagePoolSize), 1U});
         Logger::debug("created descriptorPool");
+
+        createShaderModule(pLogicalDevice, smaa_edge_vert, std::addressof(edgeVertexModule));
+
+        const auto useColor = pConfig->getOption<std::string>("smaaEdgeDetection", "luma") == "color";
+
+        useColor ? createShaderModule(pLogicalDevice, smaa_edge_color_frag, std::addressof(edgeFragmentModule))
+                 : createShaderModule(pLogicalDevice, smaa_edge_luma_frag, std::addressof(edgeFragmentModule));
+
+        createShaderModule(pLogicalDevice, smaa_blend_vert, std::addressof(blendVertexModule));
+
+        createShaderModule(pLogicalDevice, smaa_blend_frag, std::addressof(blendFragmentModule));
+
+        createShaderModule(pLogicalDevice, smaa_neighbor_vert, std::addressof(neighborVertexModule));
+
+        createShaderModule(pLogicalDevice, smaa_neighbor_frag, std::addressof(neignborFragmentModule));
+
+        renderPass      = createRenderPass(pLogicalDevice, format);
+        unormRenderPass = createRenderPass(pLogicalDevice, VK_FORMAT_B8G8R8A8_UNORM);
+        pipelineLayout  = createGraphicsPipelineLayout(pLogicalDevice, std::span{std::addressof(imageSamplerDescriptorSetLayout), 1U});
 
         const SmaaOptions smaaOptions{
             .screenWidth         = static_cast<float>(imageExtent.width),
@@ -129,27 +148,9 @@ namespace vkBasalt
             .cornerRounding      = pConfig->getOption<int32_t>("smaaCornerRounding", 25),
         };
 
-        createShaderModule(pLogicalDevice, smaa_edge_vert, &edgeVertexModule);
-
-        bool useColor = pConfig->getOption<std::string>("smaaEdgeDetection", "luma") == "color";
-
-        useColor ? createShaderModule(pLogicalDevice, smaa_edge_color_frag, std::addressof(edgeFragmentModule))
-                 : createShaderModule(pLogicalDevice, smaa_edge_luma_frag, std::addressof(edgeFragmentModule));
-
-        createShaderModule(pLogicalDevice, smaa_blend_vert, &blendVertexModule);
-
-        createShaderModule(pLogicalDevice, smaa_blend_frag, &blendFragmentModule);
-
-        createShaderModule(pLogicalDevice, smaa_neighbor_vert, &neighborVertexModule);
-
-        createShaderModule(pLogicalDevice, smaa_neighbor_frag, &neignborFragmentModule);
-
-        renderPass      = createRenderPass(pLogicalDevice, format);
-        unormRenderPass = createRenderPass(pLogicalDevice, VK_FORMAT_B8G8R8A8_UNORM);
-        pipelineLayout  = createGraphicsPipelineLayout(pLogicalDevice, std::span{std::addressof(imageSamplerDescriptorSetLayout), 1U});
-
         constexpr static auto specMapEntrys{[] {
-            std::array<VkSpecializationMapEntry, 8U> specMapEntrys{}; // TODO: why 8
+            constexpr static auto                                        smaaOptionsFieldsCount{8U};
+            std::array<VkSpecializationMapEntry, smaaOptionsFieldsCount> specMapEntrys{};
             for (auto [idx, specMapEntry] : specMapEntrys | std::views::enumerate)
             {
                 specMapEntry = {.constantID = static_cast<uint32_t>(idx),
@@ -160,10 +161,10 @@ namespace vkBasalt
             return specMapEntrys;
         }()};
 
-        VkSpecializationInfo specializationInfo{.mapEntryCount = std::size(specMapEntrys),
-                                                .pMapEntries   = std::data(specMapEntrys),
-                                                .dataSize      = sizeof(SmaaOptions),
-                                                .pData         = std::addressof(smaaOptions)};
+        const VkSpecializationInfo specializationInfo{.mapEntryCount = std::size(specMapEntrys),
+                                                      .pMapEntries   = std::data(specMapEntrys),
+                                                      .dataSize      = sizeof(SmaaOptions),
+                                                      .pData         = std::addressof(smaaOptions)};
 
         edgePipeline = createGraphicsPipeline(pLogicalDevice,
                                               edgeVertexModule,
@@ -303,7 +304,7 @@ namespace vkBasalt
         Logger::debug("after the first pipeline barrier");
 
         Logger::debug("before beginn blend renderpass");
-        pLogicalDevice->vkd.CmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        pLogicalDevice->vkd.CmdBeginRenderPass(commandBuffer, std::addressof(renderPassBeginInfo), VK_SUBPASS_CONTENTS_INLINE);
         Logger::debug("after beginn renderpass");
 
         pLogicalDevice->vkd.CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, blendPipeline);
@@ -319,12 +320,20 @@ namespace vkBasalt
         renderPassBeginInfo.framebuffer = neignborFramebuffers[imageIndex];
         renderPassBeginInfo.renderPass  = renderPass;
         // neighbor renderPass
-        pLogicalDevice->vkd.CmdPipelineBarrier(
-            commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
+        pLogicalDevice->vkd.CmdPipelineBarrier(commandBuffer,
+                                               VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                                               VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                               0,
+                                               0,
+                                               nullptr,
+                                               0,
+                                               nullptr,
+                                               1,
+                                               std::addressof(memoryBarrier));
         Logger::debug("after the first pipeline barrier");
 
         Logger::debug("before beginn neighbor renderpass");
-        pLogicalDevice->vkd.CmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        pLogicalDevice->vkd.CmdBeginRenderPass(commandBuffer, std::addressof(renderPassBeginInfo), VK_SUBPASS_CONTENTS_INLINE);
         Logger::debug("after beginn renderpass");
 
         pLogicalDevice->vkd.CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, neighborPipeline);

@@ -3,14 +3,15 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <chrono>
 #include <cstdint>
-#include <cstring>
 #include <ctime>
 #include <cstdlib>
 #include <cmath>
 #include <iterator>
 #include <string>
+#include <utility>
 #include <vector>
 #include <memory>
 #include <ratio>
@@ -21,6 +22,16 @@
 
 namespace vkBasalt
 {
+    namespace
+    {
+        template<typename T>
+        constexpr auto AsBytes(T&& value) noexcept
+        {
+            return std::bit_cast<std::array<uint8_t, sizeof(T)>>(std::forward<T>(value));
+        }
+
+    } // namespace
+
     void enumerateReshadeUniforms(reshadefx::module module)
     {
         for (auto& uniform : module.uniforms)
@@ -105,7 +116,7 @@ namespace vkBasalt
         const std::chrono::duration<float, std::milli> duration     = currentFrame - lastFrame;
         lastFrame                                                   = currentFrame;
         const float frametime                                       = duration.count();
-        std::memcpy(static_cast<uint8_t*>(mapedBuffer) + offset, std::addressof(frametime), sizeof(float));
+        std::ranges::copy(AsBytes(frametime), static_cast<uint8_t*>(mapedBuffer) + offset);
     }
 
     FrameTimeUniform::~FrameTimeUniform() = default;
@@ -124,7 +135,7 @@ namespace vkBasalt
 
     void FrameCountUniform::update(void* mapedBuffer)
     {
-        std::memcpy(static_cast<uint8_t*>(mapedBuffer) + offset, std::addressof(count), sizeof(int32_t));
+        std::ranges::copy(AsBytes(count), static_cast<uint8_t*>(mapedBuffer) + offset);
         count++;
     }
 
@@ -150,9 +161,10 @@ namespace vkBasalt
         const auto        year        = 1900.0F + static_cast<float>(currentTime->tm_year);
         const auto        month       = 1.0F + static_cast<float>(currentTime->tm_mon);
         const auto        day         = static_cast<float>(currentTime->tm_mday);
-        const auto        seconds     = static_cast<float>((currentTime->tm_hour * 60 + currentTime->tm_min) * 60 + currentTime->tm_sec);
+        const auto        seconds     = static_cast<float>((((currentTime->tm_hour * 60) + currentTime->tm_min) * 60) + currentTime->tm_sec);
         const std::array  date        = {year, month, day, seconds};
-        std::memcpy(static_cast<uint8_t*>(mapedBuffer) + offset, std::data(date), sizeof(float) * 4);
+
+        std::ranges::copy(date, static_cast<uint8_t*>(mapedBuffer) + offset);
     }
 
     DateUniform::~DateUniform() = default;
@@ -172,10 +184,11 @@ namespace vkBasalt
 
     void TimerUniform::update(void* mapedBuffer)
     {
-        auto                                           currentFrame = std::chrono::high_resolution_clock::now();
+        const auto                                     currentFrame = std::chrono::high_resolution_clock::now();
         const std::chrono::duration<float, std::milli> duration     = currentFrame - start;
-        float                                          timer        = duration.count();
-        std::memcpy(static_cast<uint8_t*>(mapedBuffer) + offset, std::addressof(timer), sizeof(float));
+        const auto                                     timer        = duration.count();
+
+        std::ranges::copy(AsBytes(timer), static_cast<uint8_t*>(mapedBuffer) + offset);
     }
 
     TimerUniform::~TimerUniform() = default;
@@ -275,7 +288,8 @@ namespace vkBasalt
     void RandomUniform::update(void* mapedBuffer)
     {
         const int32_t value = min + (std::rand() % (max - min + 1));
-        std::memcpy(static_cast<uint8_t*>(mapedBuffer) + offset, std::addressof(value), sizeof(int32_t));
+
+        std::ranges::copy(AsBytes(value), static_cast<uint8_t*>(mapedBuffer) + offset);
     }
 
     RandomUniform::~RandomUniform() = default;
@@ -293,8 +307,8 @@ namespace vkBasalt
 
     void KeyUniform::update(void* mapedBuffer)
     {
-        VkBool32 keyDown = VK_FALSE; // TODO
-        std::memcpy(static_cast<uint8_t*>(mapedBuffer) + offset, std::addressof(keyDown), sizeof(VkBool32));
+        const VkBool32 keyDown = VK_FALSE; // TODO
+        std::ranges::copy(AsBytes(keyDown), static_cast<uint8_t*>(mapedBuffer) + offset);
     }
 
     KeyUniform::~KeyUniform() = default;
@@ -314,7 +328,7 @@ namespace vkBasalt
     void MouseButtonUniform::update(void* mapedBuffer)
     {
         const static VkBool32 keyDown = VK_FALSE; // TODO
-        std::memcpy(static_cast<uint8_t*>(mapedBuffer) + offset, std::addressof(keyDown), sizeof(VkBool32));
+        std::ranges::copy(AsBytes(keyDown), static_cast<uint8_t*>(mapedBuffer) + offset);
     }
 
     MouseButtonUniform::~MouseButtonUniform() = default;
@@ -334,7 +348,7 @@ namespace vkBasalt
     void MousePointUniform::update(void* mapedBuffer)
     {
         constexpr static std::array point{0.0F, 0.0F}; // TODO
-        std::memcpy(static_cast<uint8_t*>(mapedBuffer) + offset, std::data(point), sizeof(float) * std::size(point));
+        std::ranges::copy(point, static_cast<uint8_t*>(mapedBuffer) + offset);
     }
 
     MousePointUniform::~MousePointUniform() = default;
@@ -353,7 +367,7 @@ namespace vkBasalt
     void MouseDeltaUniform::update(void* mapedBuffer)
     {
         constexpr static std::array delta{0.0F, 0.0F}; // TODO
-        std::memcpy(static_cast<uint8_t*>(mapedBuffer) + offset, std::data(delta), sizeof(float) * std::size(delta));
+        std::ranges::copy(delta, static_cast<uint8_t*>(mapedBuffer) + offset);
     }
     MouseDeltaUniform::~MouseDeltaUniform() = default;
 
@@ -371,8 +385,8 @@ namespace vkBasalt
 
     void DepthUniform::update(void* mapedBuffer)
     {
-        VkBool32 hasDepth = VK_FALSE; // TODO
-        std::memcpy(static_cast<uint8_t*>(mapedBuffer) + offset, std::addressof(hasDepth), sizeof(VkBool32));
+        const VkBool32 hasDepth = VK_FALSE; // TODO
+        std::ranges::copy(AsBytes(hasDepth), static_cast<uint8_t*>(mapedBuffer) + offset);
     }
 
     DepthUniform::~DepthUniform() = default;

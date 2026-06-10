@@ -362,7 +362,7 @@ namespace vkBasalt
             if (std::cmp_not_equal(width, textureExtent.width) || std::cmp_not_equal(height, textureExtent.height))
             {
                 resizedPixels.resize(size);
-                stbir_resize_uint8(pixels, width, height, 0, resizedPixels.data(), textureExtent.width, textureExtent.height, 0, desiredChannels);
+                stbir_resize_uint8(pixels, width, height, 0, std::data(resizedPixels), textureExtent.width, textureExtent.height, 0, desiredChannels);
             }
 
             uploadToImage(pLogicalDevice, image, textureExtent, size, std::empty(resizedPixels) ? pixels : std::data(resizedPixels), texture.levels);
@@ -371,8 +371,7 @@ namespace vkBasalt
 
         for (auto& info : module.samplers)
         {
-            VkSampler sampler = createReshadeSampler(pLogicalDevice, info);
-            samplers.emplace_back(sampler);
+            samplers.emplace_back(createReshadeSampler(pLogicalDevice, info));
             imageViewVector.emplace_back((info.srgb != 0U) ? textureImageViewsSRGB[info.texture_name] : textureImageViewsUNORM[info.texture_name]);
         }
 
@@ -380,21 +379,17 @@ namespace vkBasalt
         imageSamplerDescriptorSetLayout = createImageSamplerDescriptorSetLayout(pLogicalDevice, std::size(module.samplers));
         Logger::debug("created descriptorSetLayouts");
 
-        VkDescriptorPoolSize imagePoolSize;
-        imagePoolSize.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        imagePoolSize.descriptorCount = inputImages.size() * module.samplers.size() * 3;
+        const VkDescriptorPoolSize imagePoolSize{.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                 .descriptorCount = static_cast<uint32_t>(std::size(inputImages) * std::size(module.samplers) * 3)};
 
-        VkDescriptorPoolSize bufferPoolSize;
-        bufferPoolSize.type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        bufferPoolSize.descriptorCount = 3;
+        const VkDescriptorPoolSize bufferPoolSize{.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 3};
 
-        std::vector<VkDescriptorPoolSize> poolSizes = {imagePoolSize, bufferPoolSize};
+        const std::array poolSizes{imagePoolSize, bufferPoolSize};
 
         descriptorPool = createDescriptorPool(pLogicalDevice, poolSizes);
         Logger::debug("created descriptorPool");
 
-        std::array descriptorSetLayouts{uniformDescriptorSetLayout, imageSamplerDescriptorSetLayout};
-
+        const std::array descriptorSetLayouts{uniformDescriptorSetLayout, imageSamplerDescriptorSetLayout};
         pipelineLayout = createGraphicsPipelineLayout(pLogicalDevice, descriptorSetLayouts);
 
         Logger::debug("created Pipeline layout");
@@ -457,7 +452,7 @@ namespace vkBasalt
             std::vector<std::vector<VkImageView>>            attachmentImageViews;
             std::vector<std::string>                         currentRenderTargets;
 
-            for (int i = 0; i < 8; ++i)
+            for (int i = 0; i < std::size(pass.render_target_names); ++i)
             {
                 const auto& target = pass.render_target_names[i];
                 Logger::debug("render target:" + target);
@@ -467,7 +462,7 @@ namespace vkBasalt
                                                                                                                : textureFormatsUNORM[target],
                                                               .samples        = VK_SAMPLE_COUNT_1_BIT,
                                                               .loadOp         = (pass.clear_render_targets != 0U) ? VK_ATTACHMENT_LOAD_OP_CLEAR
-                                                                                : (pass.blend_enable != 0u)       ? VK_ATTACHMENT_LOAD_OP_LOAD
+                                                                                : (pass.blend_enable != 0U)       ? VK_ATTACHMENT_LOAD_OP_LOAD
                                                                                                                   : VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                                                               .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
                                                               .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
@@ -513,9 +508,9 @@ namespace vkBasalt
 
             renderTargets.emplace_back(currentRenderTargets);
 
-            VkRect2D scissor{.offset = {.x = 0, .y = 0},
-                             .extent = {.width  = (pass.viewport_width != 0U) ? pass.viewport_width : imageExtent.width,
-                                        .height = (pass.viewport_height != 0U) ? pass.viewport_height : imageExtent.height}};
+            const VkRect2D scissor{.offset = {.x = 0, .y = 0},
+                                   .extent = {.width  = (pass.viewport_width != 0U) ? pass.viewport_width : imageExtent.width,
+                                              .height = (pass.viewport_height != 0U) ? pass.viewport_height : imageExtent.height}};
 
             Logger::debug(std::to_string(scissor.extent.width) + " x " + std::to_string(scissor.extent.height));
 
@@ -534,9 +529,8 @@ namespace vkBasalt
 
                 attachmentImageViews.emplace_back(std::size(inputImages), stencilImageView);
 
-                VkAttachmentReference attachmentReference;
-                attachmentReference.attachment = attachmentReferences.size();
-                attachmentReference.layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                const VkAttachmentReference attachmentReference{.attachment = static_cast<uint32_t>(std::size(attachmentReferences)),
+                                                                .layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
 
                 attachmentReferences.emplace_back(attachmentReference);
 
@@ -566,7 +560,7 @@ namespace vkBasalt
                 .colorAttachmentCount    = static_cast<uint32_t>(std::size(attachmentReferences) - depthAttachmentCount),
                 .pColorAttachments       = std::data(attachmentReferences),
                 .pResolveAttachments     = nullptr,
-                .pDepthStencilAttachment = (depthAttachmentCount != 0U) ? &attachmentReferences.back() : nullptr,
+                .pDepthStencilAttachment = (depthAttachmentCount != 0U) ? std::addressof(attachmentReferences.back()) : nullptr,
                 .preserveAttachmentCount = 0,
                 .pPreserveAttachments    = nullptr};
 
@@ -594,14 +588,14 @@ namespace vkBasalt
             AssertVulkan(result);
             renderPasses.emplace_back(renderPass);
 
-            VkClearValue                clearValues[9] = {}; // TODO: potentially a bug. Size must be clearValueCount according to docs
+            std::vector<VkClearValue>   clearValues(std::size(attachmentDescriptions)); // TODO: why it was size of 9 before???
             const VkRenderPassBeginInfo renderPassBeginInfo{.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
                                                             .pNext           = nullptr,
                                                             .renderPass      = renderPass,
                                                             .framebuffer     = VK_NULL_HANDLE, // changed at apply time
                                                             .renderArea      = scissor,
-                                                            .clearValueCount = static_cast<uint32_t>(std::size(attachmentDescriptions)),
-                                                            .pClearValues    = clearValues};
+                                                            .clearValueCount = static_cast<uint32_t>(std::size(clearValues)),
+                                                            .pClearValues    = std::data(clearValues)};
 
             renderPassBeginInfos.emplace_back(renderPassBeginInfo);
 
@@ -609,13 +603,13 @@ namespace vkBasalt
 
             if (std::empty(pass.render_target_names[0]))
             {
-                std::vector<VkImageView> backBufferImageViews = pass.srgb_write_enable ? backBufferImageViewsSRGB : backBufferImageViewsUNORM;
-                std::vector<VkImageView> outputImageViews     = pass.srgb_write_enable ? outputImageViewsSRGB : outputImageViewsUNORM;
-                framebuffers.emplace_back(createFramebuffers(
-                    pLogicalDevice,
-                    renderPass,
-                    imageExtent,
-                    {outputToBackBuffer ? backBufferImageViews : outputImageViews, std::vector<VkImageView>(inputImages.size(), stencilImageView)}));
+                const auto& backBufferImageViews = (pass.srgb_write_enable != 0U) ? backBufferImageViewsSRGB : backBufferImageViewsUNORM;
+                const auto& outputImageViews     = (pass.srgb_write_enable != 0U) ? outputImageViewsSRGB : outputImageViewsUNORM;
+                framebuffers.emplace_back(createFramebuffers(pLogicalDevice,
+                                                             renderPass,
+                                                             imageExtent,
+                                                             {outputToBackBuffer ? backBufferImageViews : outputImageViews,
+                                                              std::vector<VkImageView>(std::size(inputImages), stencilImageView)}));
                 outputToBackBuffer = !outputToBackBuffer;
                 switchSamplers.emplace_back(true);
             }
@@ -672,13 +666,13 @@ namespace vkBasalt
                         }
                     }
                 }
-                specId++;
+                ++specId;
             }
 
             VkSpecializationInfo specializationInfo;
             if (not std::empty(specMapEntrys))
             {
-                specializationInfo = {.mapEntryCount = static_cast<uint32_t>(specMapEntrys.size()),
+                specializationInfo = {.mapEntryCount = static_cast<uint32_t>(std::size(specMapEntrys)),
                                       .pMapEntries   = std::data(specMapEntrys),
                                       .dataSize      = std::size(specData),
                                       .pData         = std::data(specData)};
@@ -721,70 +715,61 @@ namespace vkBasalt
                 case reshadefx::primitive_topology::line_strip: topology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP; break;
                 case reshadefx::primitive_topology::triangle_list: topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; break;
                 case reshadefx::primitive_topology::triangle_strip: topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP; break;
-                default: Logger::err("unsupported primitiv type" + convertToString((uint8_t) pass.topology)); break;
+                default: Logger::err("unsupported primitiv type" + convertToString(static_cast<uint8_t>(pass.topology))); break;
             }
 
-            VkPipelineInputAssemblyStateCreateInfo inputAssemblyCreateInfo;
-            inputAssemblyCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-            inputAssemblyCreateInfo.pNext                  = nullptr;
-            inputAssemblyCreateInfo.flags                  = 0;
-            inputAssemblyCreateInfo.topology               = topology;
-            inputAssemblyCreateInfo.primitiveRestartEnable = VK_FALSE;
+            const VkPipelineInputAssemblyStateCreateInfo inputAssemblyCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+                                                                                 .pNext = nullptr,
+                                                                                 .flags = 0,
+                                                                                 .topology               = topology,
+                                                                                 .primitiveRestartEnable = VK_FALSE};
 
-            VkPipelineViewportStateCreateInfo viewportStateCreateInfo;
-            viewportStateCreateInfo.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-            viewportStateCreateInfo.pNext         = nullptr;
-            viewportStateCreateInfo.flags         = 0;
-            viewportStateCreateInfo.viewportCount = 1;
-            viewportStateCreateInfo.pViewports    = &viewport;
-            viewportStateCreateInfo.scissorCount  = 1;
-            viewportStateCreateInfo.pScissors     = &scissor;
+            const VkPipelineViewportStateCreateInfo viewportStateCreateInfo{.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+                                                                            .pNext         = nullptr,
+                                                                            .flags         = 0,
+                                                                            .viewportCount = 1,
+                                                                            .pViewports    = std::addressof(viewport),
+                                                                            .scissorCount  = 1,
+                                                                            .pScissors     = std::addressof(scissor)};
 
-            VkPipelineRasterizationStateCreateInfo rasterizationCreateInfo;
-            rasterizationCreateInfo.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-            rasterizationCreateInfo.pNext                   = nullptr;
-            rasterizationCreateInfo.flags                   = 0;
-            rasterizationCreateInfo.depthClampEnable        = VK_FALSE;
-            rasterizationCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-            rasterizationCreateInfo.polygonMode             = VK_POLYGON_MODE_FILL;
-            rasterizationCreateInfo.cullMode                = VK_CULL_MODE_NONE;
-            rasterizationCreateInfo.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-            rasterizationCreateInfo.depthBiasEnable         = VK_FALSE;
-            rasterizationCreateInfo.depthBiasConstantFactor = 0.0F;
-            rasterizationCreateInfo.depthBiasClamp          = 0.0F;
-            rasterizationCreateInfo.depthBiasSlopeFactor    = 0.0F;
-            rasterizationCreateInfo.lineWidth               = 1.0F;
+            const VkPipelineRasterizationStateCreateInfo rasterizationCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+                                                                                 .pNext = nullptr,
+                                                                                 .flags = 0,
+                                                                                 .depthClampEnable        = VK_FALSE,
+                                                                                 .rasterizerDiscardEnable = VK_FALSE,
+                                                                                 .polygonMode             = VK_POLYGON_MODE_FILL,
+                                                                                 .cullMode                = VK_CULL_MODE_NONE,
+                                                                                 .frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+                                                                                 .depthBiasEnable         = VK_FALSE,
+                                                                                 .depthBiasConstantFactor = 0.0F,
+                                                                                 .depthBiasClamp          = 0.0F,
+                                                                                 .depthBiasSlopeFactor    = 0.0F,
+                                                                                 .lineWidth               = 1.0F};
 
-            VkPipelineMultisampleStateCreateInfo multisampleCreateInfo;
-            multisampleCreateInfo.sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-            multisampleCreateInfo.pNext                 = nullptr;
-            multisampleCreateInfo.flags                 = 0;
-            multisampleCreateInfo.rasterizationSamples  = VK_SAMPLE_COUNT_1_BIT;
-            multisampleCreateInfo.sampleShadingEnable   = VK_FALSE;
-            multisampleCreateInfo.minSampleShading      = 1.0F;
-            multisampleCreateInfo.pSampleMask           = nullptr;
-            multisampleCreateInfo.alphaToCoverageEnable = VK_FALSE;
-            multisampleCreateInfo.alphaToOneEnable      = VK_FALSE;
+            const VkPipelineMultisampleStateCreateInfo multisampleCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+                                                                             .pNext = nullptr,
+                                                                             .flags = 0,
+                                                                             .rasterizationSamples  = VK_SAMPLE_COUNT_1_BIT,
+                                                                             .sampleShadingEnable   = VK_FALSE,
+                                                                             .minSampleShading      = 1.0F,
+                                                                             .pSampleMask           = nullptr,
+                                                                             .alphaToCoverageEnable = VK_FALSE,
+                                                                             .alphaToOneEnable      = VK_FALSE};
 
-            VkPipelineColorBlendStateCreateInfo colorBlendCreateInfo;
-            colorBlendCreateInfo.sType             = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-            colorBlendCreateInfo.pNext             = nullptr;
-            colorBlendCreateInfo.flags             = 0;
-            colorBlendCreateInfo.logicOpEnable     = VK_FALSE;
-            colorBlendCreateInfo.logicOp           = VK_LOGIC_OP_NO_OP;
-            colorBlendCreateInfo.attachmentCount   = attachmentBlendStates.size();
-            colorBlendCreateInfo.pAttachments      = attachmentBlendStates.data();
-            colorBlendCreateInfo.blendConstants[0] = 0.0F;
-            colorBlendCreateInfo.blendConstants[1] = 0.0F;
-            colorBlendCreateInfo.blendConstants[2] = 0.0F;
-            colorBlendCreateInfo.blendConstants[3] = 0.0F;
+            const VkPipelineColorBlendStateCreateInfo colorBlendCreateInfo{.sType         = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+                                                                           .pNext         = nullptr,
+                                                                           .flags         = 0,
+                                                                           .logicOpEnable = VK_FALSE,
+                                                                           .logicOp       = VK_LOGIC_OP_NO_OP,
+                                                                           .attachmentCount = static_cast<uint32_t>(std::size(attachmentBlendStates)),
+                                                                           .pAttachments    = std::data(attachmentBlendStates),
+                                                                           .blendConstants  = {0.0F, 0.0F, 0.0F, 0.0F}};
 
-            VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo;
-            dynamicStateCreateInfo.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-            dynamicStateCreateInfo.pNext             = nullptr;
-            dynamicStateCreateInfo.flags             = 0;
-            dynamicStateCreateInfo.dynamicStateCount = 0;
-            dynamicStateCreateInfo.pDynamicStates    = nullptr;
+            const VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+                                                                          .pNext             = nullptr,
+                                                                          .flags             = 0,
+                                                                          .dynamicStateCount = 0,
+                                                                          .pDynamicStates    = nullptr};
 
             const VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo = {
                 .sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
@@ -825,7 +810,7 @@ namespace vkBasalt
                                                                   .basePipelineHandle  = VK_NULL_HANDLE,
                                                                   .basePipelineIndex   = -1};
 
-            VkPipeline pipeline;
+            VkPipeline pipeline{};
             result = pLogicalDevice->vkd.CreateGraphicsPipelines(
                 pLogicalDevice->device, VK_NULL_HANDLE, 1, std::addressof(pipelineCreateInfo), nullptr, std::addressof(pipeline));
             AssertVulkan(result);
@@ -842,7 +827,7 @@ namespace vkBasalt
         if (bufferSize != 0U)
         {
             void*    data{};
-            VkResult result = pLogicalDevice->vkd.MapMemory(pLogicalDevice->device, stagingBufferMemory, 0, bufferSize, 0, std::addressof(data));
+            const auto result = pLogicalDevice->vkd.MapMemory(pLogicalDevice->device, stagingBufferMemory, 0, bufferSize, 0, std::addressof(data));
             AssertVulkan(result);
             for (auto& uniform : uniforms)
             {
@@ -864,49 +849,51 @@ namespace vkBasalt
             }
         }
 
-        for (size_t i = 0; i < module.samplers.size(); i++)
+        auto isDepthTextureName = [&depthTextureNames](auto&& pair) {
+            auto&& [samplerIndex, texture_name, sampler] = pair;
+            return std::ranges::contains(depthTextureNames, texture_name);
+        };
+
+        for (auto [infoIndex, info] : module.samplers | std::views::enumerate)
         {
-            reshadefx::sampler_info info = module.samplers[i];
-            for (auto& name : depthTextureNames)
+            if (std::ranges::contains(depthTextureNames, info.texture_name))
             {
-                if (info.texture_name == name)
+                for (uint32_t j = 0; j < std::size(inputImages); ++j)
                 {
-                    for (uint32_t j = 0; j < inputImages.size(); j++)
+                    const VkDescriptorImageInfo imageInfo{
+                        .sampler     = samplers[infoIndex],
+                        .imageView   = (depthImageView != nullptr)
+                                           ? depthImageView
+                                           : inputImageViewsUNORM[j], // Use a input image if there is no depth image to prevent a crash
+                        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+
+                    VkWriteDescriptorSet writeDescriptorSet{.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                                            .pNext            = nullptr,
+                                                            .dstSet           = inputDescriptorSets[j],
+                                                            .dstBinding       = static_cast<uint32_t>(infoIndex),
+                                                            .dstArrayElement  = 0,
+                                                            .descriptorCount  = 1,
+                                                            .descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                            .pImageInfo       = std::addressof(imageInfo),
+                                                            .pBufferInfo      = nullptr,
+                                                            .pTexelBufferView = nullptr};
+
+                    pLogicalDevice->vkd.UpdateDescriptorSets(pLogicalDevice->device, 1, std::addressof(writeDescriptorSet), 0, nullptr);
+                    if (outputWrites > 1)
                     {
-                        const VkDescriptorImageInfo imageInfo{
-                            .sampler     = samplers[i],
-                            .imageView   = depthImageView ? depthImageView
-                                                          : inputImageViewsUNORM[j], // Use a input image if there is no depth image to prevent a crash
-                            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-
-                        VkWriteDescriptorSet writeDescriptorSet{.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                                                .pNext            = nullptr,
-                                                                .dstSet           = inputDescriptorSets[j],
-                                                                .dstBinding       = static_cast<uint32_t>(i),
-                                                                .dstArrayElement  = 0,
-                                                                .descriptorCount  = 1,
-                                                                .descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                                .pImageInfo       = std::addressof(imageInfo),
-                                                                .pBufferInfo      = nullptr,
-                                                                .pTexelBufferView = nullptr};
-
+                        writeDescriptorSet.dstSet = backBufferDescriptorSets[j];
                         pLogicalDevice->vkd.UpdateDescriptorSets(pLogicalDevice->device, 1, std::addressof(writeDescriptorSet), 0, nullptr);
-                        if (outputWrites > 1)
-                        {
-                            writeDescriptorSet.dstSet = backBufferDescriptorSets[j];
-                            pLogicalDevice->vkd.UpdateDescriptorSets(pLogicalDevice->device, 1, std::addressof(writeDescriptorSet), 0, nullptr);
-                        }
-                        if (outputWrites > 2)
-                        {
-                            writeDescriptorSet.dstSet = outputDescriptorSets[j];
-                            pLogicalDevice->vkd.UpdateDescriptorSets(pLogicalDevice->device, 1, std::addressof(writeDescriptorSet), 0, nullptr);
-                        }
                     }
-                    break;
+                    if (outputWrites > 2)
+                    {
+                        writeDescriptorSet.dstSet = outputDescriptorSets[j];
+                        pLogicalDevice->vkd.UpdateDescriptorSets(pLogicalDevice->device, 1, std::addressof(writeDescriptorSet), 0, nullptr);
+                    }
                 }
             }
         }
     }
+
     void ReshadeEffect::applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer)
     {
         if (std::size(inputImages) <= imageIndex)
@@ -1005,7 +992,7 @@ namespace vkBasalt
             commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, std::addressof(inputDescriptorSets[imageIndex]), 0, nullptr);
         Logger::debug("after binding image sampler");
 
-        if (bufferSize)
+        if (bufferSize != 0U)
         {
             pLogicalDevice->vkd.CmdBindDescriptorSets(
                 commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, std::addressof(bufferDescriptorSet), 0, nullptr);
@@ -1095,7 +1082,7 @@ namespace vkBasalt
             pLogicalDevice->vkd.DestroyPipeline(pLogicalDevice->device, pipeline, nullptr);
         }
 
-        if (bufferSize)
+        if (bufferSize != 0U)
         {
             pLogicalDevice->vkd.FreeMemory(pLogicalDevice->device, stagingBufferMemory, nullptr);
             pLogicalDevice->vkd.DestroyBuffer(pLogicalDevice->device, stagingBuffer, nullptr);
@@ -1171,7 +1158,7 @@ namespace vkBasalt
             }
         }
 
-        for (auto& imageView : imageViewSet)
+        for (const auto& imageView : imageViewSet)
         {
             pLogicalDevice->vkd.DestroyImageView(pLogicalDevice->device, imageView, nullptr);
         }
@@ -1205,9 +1192,6 @@ namespace vkBasalt
 
     void ReshadeEffect::createReshadeModule()
     {
-        std::string tempFile  = "/tmp/vkBasalt.spv";
-        std::string tempFile2 = "/tmp/vkBasalt.spv";
-
         reshadefx::preprocessor preprocessor;
         preprocessor.add_macro_definition("__RESHADE__", std::to_string(INT_MAX));
         preprocessor.add_macro_definition("__RESHADE_PERFORMANCE_MODE__", "1");
@@ -1228,8 +1212,7 @@ namespace vkBasalt
 
         reshadefx::parser parser;
 
-        std::string errors = preprocessor.errors();
-        if (errors != "")
+        if (const auto& errors = preprocessor.errors(); not std::empty(errors))
         {
             Logger::err(errors);
         }
@@ -1238,8 +1221,7 @@ namespace vkBasalt
             true /* vulkan semantics */, true /* debug info */, true /* uniforms to spec constants */, true /*flip vertex shader*/));
         parser.parse(std::move(preprocessor.output()), codegen.get());
 
-        errors = parser.errors();
-        if (not std::empty(errors))
+        if (const auto& errors = parser.errors(); not std::empty(errors))
         {
             Logger::err(errors);
         }
@@ -1251,7 +1233,7 @@ namespace vkBasalt
                                                         .codeSize = std::span{module.spirv}.size_bytes(),
                                                         .pCode    = std::data(module.spirv)};
 
-        VkResult result =
+        const auto result =
             pLogicalDevice->vkd.CreateShaderModule(pLogicalDevice->device, std::addressof(shaderCreateInfo), nullptr, std::addressof(shaderModule));
         AssertVulkan(result);
 

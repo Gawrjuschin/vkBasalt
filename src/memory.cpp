@@ -4,6 +4,9 @@
 #include <cstdint>
 #include <logger.hpp>
 #include <memory>
+#include <ranges>
+#include <span>
+
 #include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
@@ -12,15 +15,16 @@ namespace vkBasalt
     {
         VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
         pLogicalDevice->vki.GetPhysicalDeviceMemoryProperties(pLogicalDevice->physicalDevice, std::addressof(physicalDeviceMemoryProperties));
-        for (uint32_t i = 0; i < physicalDeviceMemoryProperties.memoryTypeCount; ++i)
+        for (auto [typeIndex, memoryType] :
+             std::span{physicalDeviceMemoryProperties.memoryTypes, physicalDeviceMemoryProperties.memoryTypeCount} | std::views::enumerate)
         {
-            if (((typeFilter & (1U << i)) != 0U) && (physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+            if (((typeFilter & (1U << typeIndex)) != 0U) && (memoryType.propertyFlags & properties) == properties)
             {
-                return i;
+                return typeIndex;
             }
         }
 
         Logger::err("Found no correct memory type");
-        return 0x70AD;
+        return 0x70AD; // TODO: better solution
     }
 } // namespace vkBasalt

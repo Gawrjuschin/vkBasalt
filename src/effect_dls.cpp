@@ -29,10 +29,10 @@ namespace vkBasalt
         constexpr static std::array mapEntries{VkSpecializationMapEntry{.constantID = 0, .offset = 0, .size = sizeof(float)},
                                                VkSpecializationMapEntry{.constantID = 1, .offset = sizeof(float), .size = sizeof(float)}};
 
-        VkSpecializationInfo fragmentSpecializationInfo{.mapEntryCount = 1, // TODO: why 1 and not std::size(mapEntries)?
-                                                        .pMapEntries   = std::data(mapEntries),
-                                                        .dataSize      = std::span{specData}.size_bytes(),
-                                                        .pData         = std::data(specData)};
+        const VkSpecializationInfo fragmentSpecializationInfo{.mapEntryCount = 1, // TODO: why 1 and not std::size(mapEntries)?
+                                                              .pMapEntries   = std::data(mapEntries),
+                                                              .dataSize      = std::span{specData}.size_bytes(),
+                                                              .pData         = std::data(specData)};
 
         pVertexSpecInfo   = nullptr;
         pFragmentSpecInfo = std::addressof(fragmentSpecializationInfo);

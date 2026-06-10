@@ -13,7 +13,7 @@
 
 namespace vkBasalt
 {
-    VkPipelineLayout createGraphicsPipelineLayout(LogicalDevice* pLogicalDevice, std::span<VkDescriptorSetLayout> descriptorSetLayouts)
+    VkPipelineLayout createGraphicsPipelineLayout(LogicalDevice* pLogicalDevice, std::span<const VkDescriptorSetLayout> descriptorSetLayouts)
     {
         const VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
                                                                   .pNext                  = nullptr,
@@ -30,17 +30,17 @@ namespace vkBasalt
         return pipelineLayout;
     }
 
-    VkPipeline createGraphicsPipeline(LogicalDevice*        pLogicalDevice,
-                                      VkShaderModule        vertexModule,
-                                      VkSpecializationInfo* vertexSpecializationInfo,
-                                      const std::string&    vertexEntryPoint,
-                                      VkShaderModule        fragmentModule,
-                                      VkSpecializationInfo* fragmentSpecializationInfo,
-                                      std::string           fragmentEntryPoint,
-                                      VkExtent2D            extent,
-                                      VkRenderPass          renderPass,
-                                      VkPipelineLayout      pipelineLayout,
-                                      bool                  flip)
+    VkPipeline createGraphicsPipeline(LogicalDevice*              pLogicalDevice,
+                                      VkShaderModule              vertexModule,
+                                      const VkSpecializationInfo* vertexSpecializationInfo,
+                                      const std::string&          vertexEntryPoint,
+                                      VkShaderModule              fragmentModule,
+                                      const VkSpecializationInfo* fragmentSpecializationInfo,
+                                      const std::string&          fragmentEntryPoint,
+                                      VkExtent2D                  extent,
+                                      VkRenderPass                renderPass,
+                                      VkPipelineLayout            pipelineLayout,
+                                      bool                        flip)
     {
         const VkPipelineShaderStageCreateInfo shaderStageCreateInfoVert{.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                                                                         .pNext               = nullptr,

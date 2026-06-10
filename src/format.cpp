@@ -2,6 +2,7 @@
 #include "logical_device.hpp"
 
 #include <array>
+#include <memory>
 #include <span>
 
 #include <vulkan/vulkan_core.h>
@@ -107,7 +108,7 @@ namespace vkBasalt
         for (const auto& format : formats)
         {
             VkFormatProperties properties;
-            pLogicalDevice->vki.GetPhysicalDeviceFormatProperties(pLogicalDevice->physicalDevice, format, &properties);
+            pLogicalDevice->vki.GetPhysicalDeviceFormatProperties(pLogicalDevice->physicalDevice, format, std::addressof(properties));
             if ((properties.optimalTilingFeatures & features) == features && tiling == VK_IMAGE_TILING_OPTIMAL)
             {
                 return format;

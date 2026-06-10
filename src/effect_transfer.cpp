@@ -82,7 +82,7 @@ namespace vkBasalt
                                          outputImages[imageIndex],
                                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                          1,
-                                         &imageCopy);
+                                         std::addressof(imageCopy));
 
         memoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         memoryBarrier.dstAccessMask = 0;

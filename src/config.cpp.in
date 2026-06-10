@@ -97,7 +97,7 @@ namespace vkBasalt
 
     BREAK:
 
-        if (!key.empty() && !value.empty())
+        if (not std::empty(key) && not std::empty(value))
         {
             Logger::info(key + " = " + value);
             options[key] = value;
@@ -135,7 +135,7 @@ namespace vkBasalt
 
             std::string rest;
             ss >> rest;
-            if (failed || (!rest.empty() && rest != "f"))
+            if (failed || (not std::empty(rest) && rest != "f"))
             {
                 Logger::warn("invalid float value for: " + option);
             }

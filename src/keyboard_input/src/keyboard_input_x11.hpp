@@ -7,7 +7,7 @@
 namespace vkBasalt
 {
     uint32_t convertToKeySymX11(const std::string& key);
-    bool     isKeyPressedX11(uint32_t ks);
+    bool     isKeyPressedX11(uint32_t keySymbol);
 } // namespace vkBasalt
 
 #endif // VKBASALT_KEYBOARD_INPUT_X11_HPP

@@ -27,7 +27,7 @@ namespace vkBasalt
             .size       = sizeof(float),
         };
 
-        VkSpecializationInfo fragmentSpecializationInfo{
+        const VkSpecializationInfo fragmentSpecializationInfo{
             .mapEntryCount = 1, .pMapEntries = std::addressof(sharpnessMapEntry), .dataSize = sizeof(float), .pData = std::addressof(sharpness)};
 
         pVertexSpecInfo   = nullptr;

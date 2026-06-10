@@ -67,7 +67,7 @@ namespace vkBasalt
             return specMapEntrys;
         }()};
 
-        VkSpecializationInfo specializationInfo{
+        const VkSpecializationInfo specializationInfo{
             .mapEntryCount = std::size(specMapEntrys),
             .pMapEntries   = std::data(specMapEntrys),
             .dataSize      = sizeof(DebandOptions),

@@ -66,7 +66,7 @@ namespace vkBasalt
 
         if (memoryRequirements.size % memoryRequirements.alignment != 0)
         {
-            memoryRequirements.size = (memoryRequirements.size / memoryRequirements.alignment + 1) * memoryRequirements.alignment;
+            memoryRequirements.size = ((memoryRequirements.size / memoryRequirements.alignment) + 1) * memoryRequirements.alignment;
         }
 
         const VkMemoryAllocateInfo memoryAllocateInfo{.sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
@@ -136,7 +136,7 @@ namespace vkBasalt
 
         if (memoryRequirements.size % memoryRequirements.alignment != 0)
         {
-            memoryRequirements.size = (memoryRequirements.size / memoryRequirements.alignment + 1) * memoryRequirements.alignment;
+            memoryRequirements.size = ((memoryRequirements.size / memoryRequirements.alignment) + 1) * memoryRequirements.alignment;
         }
 
         const VkMemoryAllocateInfo memoryAllocateInfo{.sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,

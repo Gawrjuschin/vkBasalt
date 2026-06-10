@@ -10,19 +10,19 @@
 
 namespace vkBasalt
 {
-    VkPipelineLayout createGraphicsPipelineLayout(LogicalDevice* pLogicalDevice, std::span<VkDescriptorSetLayout> descriptorSetLayouts);
+    VkPipelineLayout createGraphicsPipelineLayout(LogicalDevice* pLogicalDevice, std::span<const VkDescriptorSetLayout> descriptorSetLayouts);
 
-    VkPipeline createGraphicsPipeline(LogicalDevice*        pLogicalDevice,
-                                      VkShaderModule        vertexModule,
-                                      VkSpecializationInfo* vertexSpecializationInfo,
-                                      const std::string&    vertexEntryPoint,
-                                      VkShaderModule        fragmentModule,
-                                      VkSpecializationInfo* fragmentSpecializationInfo,
-                                      std::string           fragmentEntryPoint,
-                                      VkExtent2D            extent,
-                                      VkRenderPass          renderPass,
-                                      VkPipelineLayout      pipelineLayout,
-                                      bool                  flip = false);
+    VkPipeline createGraphicsPipeline(LogicalDevice*              pLogicalDevice,
+                                      VkShaderModule              vertexModule,
+                                      const VkSpecializationInfo* vertexSpecializationInfo,
+                                      const std::string&          vertexEntryPoint,
+                                      VkShaderModule              fragmentModule,
+                                      const VkSpecializationInfo* fragmentSpecializationInfo,
+                                      const std::string&          fragmentEntryPoint,
+                                      VkExtent2D                  extent,
+                                      VkRenderPass                renderPass,
+                                      VkPipelineLayout            pipelineLayout,
+                                      bool                        flip = false);
 
 } // namespace vkBasalt
 

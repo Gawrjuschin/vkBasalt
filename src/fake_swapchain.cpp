@@ -42,7 +42,7 @@ namespace vkBasalt
 
         const VkImageCreateInfo imageCreateInfo{
             .sType       = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-            .pNext       = (unormFormat == srgbFormat) ? nullptr : &imageFormatListCreateInfo,
+            .pNext       = (unormFormat == srgbFormat) ? nullptr : std::addressof(imageFormatListCreateInfo),
             .flags       = static_cast<VkImageCreateFlags>((unormFormat == srgbFormat) ? 0 : VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT),
             .imageType   = VK_IMAGE_TYPE_2D,
             .format      = logicalSwapchain.swapchainCreateInfo.imageFormat,
@@ -76,7 +76,7 @@ namespace vkBasalt
 
         if (memoryRequirements.size % memoryRequirements.alignment != 0)
         {
-            memoryRequirements.size = (memoryRequirements.size / memoryRequirements.alignment + 1) * memoryRequirements.alignment;
+            memoryRequirements.size = ((memoryRequirements.size / memoryRequirements.alignment) + 1) * memoryRequirements.alignment;
         }
 
         const VkMemoryAllocateInfo memoryAllocateInfo{
@@ -86,8 +86,8 @@ namespace vkBasalt
             .memoryTypeIndex =
                 findMemoryTypeIndex(std::addressof(logicalDevice), memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)};
 
-        const auto result =
-            logicalDevice.vkd.AllocateMemory(logicalDevice.device, &memoryAllocateInfo, nullptr, std::addressof(logicalSwapchain.fakeImageMemory));
+        const auto result = logicalDevice.vkd.AllocateMemory(
+            logicalDevice.device, std::addressof(memoryAllocateInfo), nullptr, std::addressof(logicalSwapchain.fakeImageMemory));
         AssertVulkan(result);
 
         for (auto [idx, fakeImage] : std::views::enumerate(logicalSwapchain.fakeImages))

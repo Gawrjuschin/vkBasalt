@@ -351,28 +351,29 @@ namespace vkBasalt
 
             fillDispatchTableDevice(*pDevice, gdpa, std::addressof(logicalDevice.vkd));
 
-            // TODO: better solution
-            uint32_t count{};
-            logicalDevice.vki.GetPhysicalDeviceQueueFamilyProperties(logicalDevice.physicalDevice, std::addressof(count), nullptr);
+            uint32_t queuePropertiesSize{};
+            logicalDevice.vki.GetPhysicalDeviceQueueFamilyProperties(logicalDevice.physicalDevice, std::addressof(queuePropertiesSize), nullptr);
 
-            std::vector<VkQueueFamilyProperties> queueProperties(count);
+            std::vector<VkQueueFamilyProperties> queueProperties(queuePropertiesSize);
+            logicalDevice.vki.GetPhysicalDeviceQueueFamilyProperties(
+                logicalDevice.physicalDevice, std::addressof(queuePropertiesSize), std::data(queueProperties));
 
-            logicalDevice.vki.GetPhysicalDeviceQueueFamilyProperties(logicalDevice.physicalDevice, std::addressof(count), std::data(queueProperties));
-            for (const auto& queueInfo : std::span{pCreateInfo->pQueueCreateInfos, pCreateInfo->queueCreateInfoCount})
+            for (const auto queueFamilyIndex : std::span{pCreateInfo->pQueueCreateInfos, pCreateInfo->queueCreateInfoCount}
+                                                   | std::views::transform(&VkDeviceQueueCreateInfo::queueFamilyIndex))
             {
-                if ((queueProperties[queueInfo.queueFamilyIndex].queueFlags & VkQueueFlagBits::VK_QUEUE_GRAPHICS_BIT) != 0U)
+                if ((queueProperties[queueFamilyIndex].queueFlags & VkQueueFlagBits::VK_QUEUE_GRAPHICS_BIT) != 0U)
                 {
-                    logicalDevice.vkd.GetDeviceQueue(logicalDevice.device, queueInfo.queueFamilyIndex, 0, std::addressof(logicalDevice.queue));
+                    logicalDevice.vkd.GetDeviceQueue(logicalDevice.device, queueFamilyIndex, 0, std::addressof(logicalDevice.queue));
 
                     const VkCommandPoolCreateInfo commandPoolCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
                                                                         .pNext = nullptr,
                                                                         .flags = 0,
-                                                                        .queueFamilyIndex = queueInfo.queueFamilyIndex};
+                                                                        .queueFamilyIndex = queueFamilyIndex};
 
                     Logger::debug("Found graphics capable queue");
                     logicalDevice.vkd.CreateCommandPool(
                         logicalDevice.device, std::addressof(commandPoolCreateInfo), nullptr, std::addressof(logicalDevice.commandPool));
-                    logicalDevice.queueFamilyIndex = queueInfo.queueFamilyIndex;
+                    logicalDevice.queueFamilyIndex = queueFamilyIndex;
 
                     initializeDispatchTable(logicalDevice.queue, logicalDevice.device);
 
@@ -471,7 +472,7 @@ namespace vkBasalt
 
             Logger::debug("format " + std::to_string(modifiedCreateInfo.imageFormat));
 
-            const auto result = logicalDevice.vkd.CreateSwapchainKHR(device, &modifiedCreateInfo, pAllocator, pSwapchain);
+            const auto result = logicalDevice.vkd.CreateSwapchainKHR(device, std::addressof(modifiedCreateInfo), pAllocator, pSwapchain);
 
             // TODO: check success on emplace
             state.swapchainMap.emplace(*pSwapchain,
@@ -728,10 +729,10 @@ namespace vkBasalt
             std::vector<VkPipelineStageFlags> waitStages(pPresentInfo->waitSemaphoreCount,
                                                          VkPipelineStageFlagBits::VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
-            for (uint32_t i = 0; i < pPresentInfo->swapchainCount; ++i)
+            for (auto [swapchainIndex, imageIndex, swapchain] : std::views::zip(std::views::iota(pPresentInfo->swapchainCount),
+                                                                                std::span{pPresentInfo->pImageIndices, pPresentInfo->swapchainCount},
+                                                                                std::span{pPresentInfo->pSwapchains, pPresentInfo->swapchainCount}))
             {
-                const uint32_t imageIndex = pPresentInfo->pImageIndices[i];
-                VkSwapchainKHR swapchain = pPresentInfo->pSwapchains[i];
 
                 const auto logicalSwapchainIt = state.swapchainMap.find(swapchain);
                 if (logicalSwapchainIt == std::cend(state.swapchainMap))
@@ -743,16 +744,16 @@ namespace vkBasalt
 
                 std::ranges::for_each(logicalSwapchain.effects, &Effect::updateEffect);
 
-                VkSubmitInfo submitInfo{.sType                = VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                                        .pNext                = nullptr,
-                                        .waitSemaphoreCount   = (i == 0) ? pPresentInfo->waitSemaphoreCount : 0,
-                                        .pWaitSemaphores      = (i == 0) ? pPresentInfo->pWaitSemaphores : nullptr,
-                                        .pWaitDstStageMask    = (i == 0) ? std::data(waitStages) : nullptr,
-                                        .commandBufferCount   = 1,
-                                        .pCommandBuffers      = presentEffect ? std::addressof(logicalSwapchain.commandBuffersEffect[imageIndex])
-                                                                              : std::addressof(logicalSwapchain.commandBuffersNoEffect[imageIndex]),
-                                        .signalSemaphoreCount = 1,
-                                        .pSignalSemaphores    = std::addressof(logicalSwapchain.semaphores[imageIndex])};
+                const VkSubmitInfo submitInfo{.sType              = VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                                              .pNext              = nullptr,
+                                              .waitSemaphoreCount = (swapchainIndex == 0) ? pPresentInfo->waitSemaphoreCount : 0,
+                                              .pWaitSemaphores    = (swapchainIndex == 0) ? pPresentInfo->pWaitSemaphores : nullptr,
+                                              .pWaitDstStageMask  = (swapchainIndex == 0) ? std::data(waitStages) : nullptr,
+                                              .commandBufferCount = 1,
+                                              .pCommandBuffers    = presentEffect ? std::addressof(logicalSwapchain.commandBuffersEffect[imageIndex])
+                                                                                  : std::addressof(logicalSwapchain.commandBuffersNoEffect[imageIndex]),
+                                              .signalSemaphoreCount = 1,
+                                              .pSignalSemaphores    = std::addressof(logicalSwapchain.semaphores[imageIndex])};
 
                 presentSemaphores.emplace_back(logicalSwapchain.semaphores[imageIndex]);
 
