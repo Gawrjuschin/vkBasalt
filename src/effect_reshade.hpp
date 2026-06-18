@@ -9,7 +9,6 @@
 
 #include <cstdint>
 #include <string>
-#include <string_view>
 #include <vector>
 #include <unordered_map>
 #include <memory>
@@ -27,8 +26,8 @@ namespace vkBasalt
                       VkExtent2D               imageExtent,
                       std::span<const VkImage> inputImages,
                       std::span<const VkImage> outputImages,
-                      Config*                  pConfig,
-                      std::string_view         effectName);
+                      std::string              effectName,
+                      const Config&            config);
         ReshadeEffect(const ReshadeEffect&)            = delete;
         ReshadeEffect& operator=(const ReshadeEffect&) = delete;
         ReshadeEffect(ReshadeEffect&&)                 = delete;
@@ -77,7 +76,6 @@ namespace vkBasalt
         std::vector<bool>                     switchSamplers;
         VkExtent2D                            imageExtent;
         std::vector<VkSampler>                samplers;
-        Config*                               pConfig;
         std::string                           effectName;
         reshadefx::module                     module;
         std::vector<VkDeviceMemory>           textureMemory;
@@ -100,7 +98,7 @@ namespace vkBasalt
 
         std::vector<std::unique_ptr<ReshadeUniform>> uniforms;
 
-        void createReshadeModule();
+        void createReshadeModule(const Config& config);
     };
 } // namespace vkBasalt
 

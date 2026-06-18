@@ -20,7 +20,7 @@ namespace vkBasalt
                   VkExtent2D               imageExtent,
                   std::span<const VkImage> inputImages,
                   std::span<const VkImage> outputImages,
-                  Config*                  pConfig);
+                  const Config&            config);
 
         LutEffect(const LutEffect&)            = delete;
         LutEffect& operator=(const LutEffect&) = delete;

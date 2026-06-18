@@ -554,62 +554,38 @@ namespace vkBasalt
                 // TODO: in separate function
                 if (effect == "fxaa")
                 {
-                    logicalSwapchain.effects.emplace_back(std::make_unique<FxaaEffect>(std::addressof(logicalDevice),
-                                                                                       srgbFormat,
-                                                                                       logicalSwapchain.imageExtent,
-                                                                                       firstImages,
-                                                                                       secondImages,
-                                                                                       std::addressof(state.config)));
+                    logicalSwapchain.effects.emplace_back(std::make_unique<FxaaEffect>(
+                        std::addressof(logicalDevice), srgbFormat, logicalSwapchain.imageExtent, firstImages, secondImages, state.config));
                     Logger::debug("created FxaaEffect");
                 }
                 else if (effect == "cas")
                 {
-                    logicalSwapchain.effects.emplace_back(std::make_unique<CasEffect>(std::addressof(logicalDevice),
-                                                                                      unormFormat,
-                                                                                      logicalSwapchain.imageExtent,
-                                                                                      firstImages,
-                                                                                      secondImages,
-                                                                                      std::addressof(state.config)));
+                    logicalSwapchain.effects.emplace_back(std::make_unique<CasEffect>(
+                        std::addressof(logicalDevice), unormFormat, logicalSwapchain.imageExtent, firstImages, secondImages, state.config));
                     Logger::debug("created CasEffect");
                 }
                 else if (effect == "deband")
                 {
-                    logicalSwapchain.effects.emplace_back(std::make_unique<DebandEffect>(std::addressof(logicalDevice),
-                                                                                         unormFormat,
-                                                                                         logicalSwapchain.imageExtent,
-                                                                                         firstImages,
-                                                                                         secondImages,
-                                                                                         std::addressof(state.config)));
+                    logicalSwapchain.effects.emplace_back(std::make_unique<DebandEffect>(
+                        std::addressof(logicalDevice), unormFormat, logicalSwapchain.imageExtent, firstImages, secondImages, state.config));
                     Logger::debug("created DebandEffect");
                 }
                 else if (effect == "smaa")
                 {
-                    logicalSwapchain.effects.emplace_back(std::make_unique<SmaaEffect>(std::addressof(logicalDevice),
-                                                                                       unormFormat,
-                                                                                       logicalSwapchain.imageExtent,
-                                                                                       firstImages,
-                                                                                       secondImages,
-                                                                                       std::addressof(state.config)));
+                    logicalSwapchain.effects.emplace_back(std::make_unique<SmaaEffect>(
+                        std::addressof(logicalDevice), unormFormat, logicalSwapchain.imageExtent, firstImages, secondImages, state.config));
                     Logger::debug("created SmaaEffect");
                 }
                 else if (effect == "lut")
                 {
-                    logicalSwapchain.effects.emplace_back(std::make_unique<LutEffect>(std::addressof(logicalDevice),
-                                                                                      unormFormat,
-                                                                                      logicalSwapchain.imageExtent,
-                                                                                      firstImages,
-                                                                                      secondImages,
-                                                                                      std::addressof(state.config)));
+                    logicalSwapchain.effects.emplace_back(std::make_unique<LutEffect>(
+                        std::addressof(logicalDevice), unormFormat, logicalSwapchain.imageExtent, firstImages, secondImages, state.config));
                     Logger::debug("created LutEffect");
                 }
                 else if (effect == "dls")
                 {
-                    logicalSwapchain.effects.emplace_back(std::make_unique<DlsEffect>(std::addressof(logicalDevice),
-                                                                                      unormFormat,
-                                                                                      logicalSwapchain.imageExtent,
-                                                                                      firstImages,
-                                                                                      secondImages,
-                                                                                      std::addressof(state.config)));
+                    logicalSwapchain.effects.emplace_back(std::make_unique<DlsEffect>(
+                        std::addressof(logicalDevice), unormFormat, logicalSwapchain.imageExtent, firstImages, secondImages, state.config));
                     Logger::debug("created DlsEffect");
                 }
                 else
@@ -619,8 +595,8 @@ namespace vkBasalt
                                                                                           logicalSwapchain.imageExtent,
                                                                                           firstImages,
                                                                                           secondImages,
-                                                                                          std::addressof(state.config),
-                                                                                          effect));
+                                                                                          effect,
+                                                                                          state.config));
                     Logger::debug("created ReshadeEffect");
                 }
             }
@@ -632,8 +608,7 @@ namespace vkBasalt
                     logicalSwapchain.format,
                     logicalSwapchain.imageExtent,
                     std::span{std::prev(std::end(logicalSwapchain.fakeImages), logicalSwapchain.imageCount), std::end(logicalSwapchain.fakeImages)},
-                    logicalSwapchain.images,
-                    std::addressof(state.config)));
+                    logicalSwapchain.images));
             }
 
             auto* depthImage     = std::empty(logicalDevice.depthImages) ? VK_NULL_HANDLE : logicalDevice.depthImages.front();
@@ -669,8 +644,7 @@ namespace vkBasalt
                 logicalSwapchain.format,
                 logicalSwapchain.imageExtent,
                 std::span{std::begin(logicalSwapchain.fakeImages), std::next(std::begin(logicalSwapchain.fakeImages), logicalSwapchain.imageCount)},
-                std::span{logicalSwapchain.images},
-                std::addressof(state.config));
+                std::span{logicalSwapchain.images});
 
             logicalSwapchain.commandBuffersNoEffect = allocateCommandBuffer(std::addressof(logicalDevice), logicalSwapchain.imageCount);
 

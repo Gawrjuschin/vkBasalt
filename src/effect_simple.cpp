@@ -1,5 +1,4 @@
 #include "effect_simple.hpp"
-#include "config.hpp"
 #include "image_view.hpp"
 #include "descriptor_set.hpp"
 #include "logical_device.hpp"
@@ -25,21 +24,20 @@ namespace vkBasalt
 {
     SimpleEffect::SimpleEffect() = default;
 
-    void SimpleEffect::init(LogicalDevice*           pLogicalDevice,
-                            VkFormat                 format,
-                            VkExtent2D               imageExtent,
-                            std::span<const VkImage> inputImages,
-                            std::span<const VkImage> outputImages,
-                            Config*                  pConfig)
+    void SimpleEffect::init(LogicalDevice*              pLogicalDevice,
+                            VkFormat                    format,
+                            VkExtent2D                  imageExtent,
+                            std::span<const VkImage>    inputImages,
+                            std::span<const VkImage>    outputImages,
+                            const VkSpecializationInfo* pVertexSpecInfo,
+                            const VkSpecializationInfo* pFragmentSpecInfo)
     {
         Logger::debug("in creating SimpleEffect");
 
         this->pLogicalDevice = pLogicalDevice;
-        this->format         = format;
         this->imageExtent    = imageExtent;
         this->inputImages.assign(std::cbegin(inputImages), std::cend(inputImages));
         this->outputImages.assign(std::cbegin(outputImages), std::cend(outputImages));
-        this->pConfig        = pConfig;
 
         inputImageViews = createImageViews(pLogicalDevice, format, inputImages);
         Logger::debug("created input ImageViews");

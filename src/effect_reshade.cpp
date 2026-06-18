@@ -137,17 +137,17 @@ namespace vkBasalt
                                  VkExtent2D               imageExtent,
                                  std::span<const VkImage> inputImages,
                                  std::span<const VkImage> outputImages,
-                                 Config*                  pConfig,
-                                 std::string_view         effectName) :
+                                 std::string              effectName,
+                                 const Config&            config) :
         pLogicalDevice{pLogicalDevice}, inputImages(std::cbegin(inputImages), std::cend(inputImages)),
-        outputImages(std::cbegin(outputImages), std::cend(outputImages)), imageExtent{imageExtent}, pConfig{pConfig},
-        effectName(std::cbegin(effectName), std::cend(effectName)), module{}, inputOutputFormatUNORM(convertToUNORM(format)),
-        inputOutputFormatSRGB{convertToSRGB(format)}, inputImageViewsSRGB{createImageViews(pLogicalDevice, inputOutputFormatSRGB, inputImages)},
+        outputImages(std::cbegin(outputImages), std::cend(outputImages)), imageExtent{imageExtent}, effectName{std::move(effectName)}, module{},
+        inputOutputFormatUNORM(convertToUNORM(format)), inputOutputFormatSRGB{convertToSRGB(format)},
+        inputImageViewsSRGB{createImageViews(pLogicalDevice, inputOutputFormatSRGB, inputImages)},
         inputImageViewsUNORM{createImageViews(pLogicalDevice, inputOutputFormatUNORM, inputImages)},
         outputImageViewsSRGB{createImageViews(pLogicalDevice, inputOutputFormatSRGB, outputImages)},
         outputImageViewsUNORM{createImageViews(pLogicalDevice, inputOutputFormatUNORM, outputImages)}
     {
-        createReshadeModule();
+        createReshadeModule(config);
 
         enumerateReshadeUniforms(module);
 
@@ -319,7 +319,7 @@ namespace vkBasalt
                 }
             }
 
-            const std::string    filePath = pConfig->getOption<std::string>("reshadeTexturePath") + "/" + source->value.string_data;
+            const std::string    filePath = config.getOption<std::string>("reshadeTexturePath") + "/" + source->value.string_data;
             stbi_uc*             pixels{};
             std::vector<stbi_uc> resizedPixels{};
             int                  width{};
@@ -629,7 +629,7 @@ namespace vkBasalt
             {
                 if (not std::empty(opt.name))
                 {
-                    auto val = pConfig->getOption<std::string>(opt.name);
+                    auto val = config.getOption<std::string>(opt.name);
                     if (not std::empty(val))
                     {
                         std::variant<int32_t, uint32_t, float> convertedValue;
@@ -637,25 +637,25 @@ namespace vkBasalt
                         switch (opt.type.base)
                         {
                             case reshadefx::type::t_bool:
-                                convertedValue.emplace<int32_t>(static_cast<int32_t>(pConfig->getOption<bool>(opt.name)));
+                                convertedValue.emplace<int32_t>(static_cast<int32_t>(config.getOption<bool>(opt.name)));
                                 specData.resize(offset + sizeof(VkBool32));
                                 std::memcpy(std::data(specData) + offset, std::addressof(convertedValue), sizeof(VkBool32));
                                 specMapEntrys.emplace_back(specId, offset, sizeof(VkBool32));
                                 break;
                             case reshadefx::type::t_int:
-                                convertedValue.emplace<int32_t>(pConfig->getOption<int32_t>(opt.name));
+                                convertedValue.emplace<int32_t>(config.getOption<int32_t>(opt.name));
                                 specData.resize(offset + sizeof(int32_t));
                                 std::memcpy(std::data(specData) + offset, std::addressof(convertedValue), sizeof(int32_t));
                                 specMapEntrys.emplace_back(specId, offset, sizeof(int32_t));
                                 break;
                             case reshadefx::type::t_uint:
-                                convertedValue.emplace<uint32_t>(pConfig->getOption<int32_t>(opt.name));
+                                convertedValue.emplace<uint32_t>(config.getOption<int32_t>(opt.name));
                                 specData.resize(offset + sizeof(uint32_t));
                                 std::memcpy(std::data(specData) + offset, std::addressof(convertedValue), sizeof(uint32_t));
                                 specMapEntrys.emplace_back(specId, offset, sizeof(uint32_t));
                                 break;
                             case reshadefx::type::t_float:
-                                convertedValue.emplace<float>(pConfig->getOption<float>(opt.name));
+                                convertedValue.emplace<float>(config.getOption<float>(opt.name));
                                 specData.resize(offset + sizeof(float));
                                 std::memcpy(std::data(specData) + offset, std::addressof(convertedValue), sizeof(float));
                                 specMapEntrys.emplace_back(specId, offset, sizeof(float));
@@ -1190,7 +1190,7 @@ namespace vkBasalt
         }
     }
 
-    void ReshadeEffect::createReshadeModule()
+    void ReshadeEffect::createReshadeModule(const Config& config)
     {
         reshadefx::preprocessor preprocessor;
         preprocessor.add_macro_definition("__RESHADE__", std::to_string(INT_MAX));
@@ -1203,10 +1203,10 @@ namespace vkBasalt
         preprocessor.add_macro_definition("BUFFER_RCP_WIDTH", "(1.0 / BUFFER_WIDTH)");
         preprocessor.add_macro_definition("BUFFER_RCP_HEIGHT", "(1.0 / BUFFER_HEIGHT)");
         preprocessor.add_macro_definition("BUFFER_COLOR_DEPTH", (inputOutputFormatUNORM == VK_FORMAT_A2R10G10B10_UNORM_PACK32) ? "10" : "8");
-        preprocessor.add_include_path(pConfig->getOption<std::string>("reshadeIncludePath"));
-        if (!preprocessor.append_file(pConfig->getOption<std::string>(effectName)))
+        preprocessor.add_include_path(config.getOption<std::string>("reshadeIncludePath"));
+        if (!preprocessor.append_file(config.getOption<std::string>(effectName)))
         {
-            Logger::err("failed to load shader file: " + pConfig->getOption<std::string>(effectName));
+            Logger::err("failed to load shader file: " + config.getOption<std::string>(effectName));
             Logger::err("Does the filepath exist and does it not include spaces?");
         }
 

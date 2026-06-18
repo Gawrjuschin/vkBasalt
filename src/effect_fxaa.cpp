@@ -20,11 +20,11 @@ namespace vkBasalt
                            VkExtent2D               imageExtent,
                            std::span<const VkImage> inputImages,
                            std::span<const VkImage> outputImages,
-                           Config*                  pConfig)
+                           const Config&            config)
     {
-        const auto fxaaQualitySubpix           = pConfig->getOption<float>("fxaaQualitySubpix", 0.75F);
-        const auto fxaaQualityEdgeThreshold    = pConfig->getOption<float>("fxaaQualityEdgeThreshold", 0.125F);
-        const auto fxaaQualityEdgeThresholdMin = pConfig->getOption<float>("fxaaQualityEdgeThresholdMin", 0.0312F);
+        const auto fxaaQualitySubpix           = config.getOption<float>("fxaaQualitySubpix", 0.75F);
+        const auto fxaaQualityEdgeThreshold    = config.getOption<float>("fxaaQualityEdgeThreshold", 0.125F);
+        const auto fxaaQualityEdgeThresholdMin = config.getOption<float>("fxaaQualityEdgeThresholdMin", 0.0312F);
 
         vertexCode   = full_screen_triangle_vert;
         fragmentCode = fxaa_frag;
@@ -51,10 +51,7 @@ namespace vkBasalt
                                                               .dataSize      = std::span{specData}.size_bytes(),
                                                               .pData         = std::data(specData)};
 
-        pVertexSpecInfo   = nullptr;
-        pFragmentSpecInfo = std::addressof(fragmentSpecializationInfo);
-
-        init(pLogicalDevice, format, imageExtent, inputImages, outputImages, pConfig);
+        init(pLogicalDevice, format, imageExtent, inputImages, outputImages, nullptr, std::addressof(fragmentSpecializationInfo));
     }
 
     FxaaEffect::~FxaaEffect() = default;

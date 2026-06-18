@@ -2,7 +2,6 @@
 #define EFFECT_TRANSFER_HPP_INCLUDED
 
 #include "effect.hpp"
-#include "config.hpp"
 #include "logical_device.hpp"
 
 #include <cstdint>
@@ -20,8 +19,7 @@ namespace vkBasalt
                        VkFormat                 format,
                        VkExtent2D               imageExtent,
                        std::span<const VkImage> inputImages,
-                       std::span<const VkImage> outputImages,
-                       Config*                  pConfig);
+                       std::span<const VkImage> outputImages);
         TransferEffect(const TransferEffect&)            = delete;
         TransferEffect& operator=(const TransferEffect&) = delete;
         TransferEffect(TransferEffect&&)                 = delete;
@@ -36,7 +34,6 @@ namespace vkBasalt
         std::vector<VkImage> outputImages;
         VkExtent2D           imageExtent;
         VkFormat             format;
-        Config*              pConfig;
     };
 } // namespace vkBasalt
 #endif // EFFECT_TRANSFER_HPP_INCLUDED

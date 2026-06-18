@@ -37,7 +37,7 @@ namespace vkBasalt
                                VkExtent2D               imageExtent,
                                std::span<const VkImage> inputImages,
                                std::span<const VkImage> outputImages,
-                               Config*                  pConfig)
+                               const Config&            config)
     {
         vertexCode   = full_screen_triangle_vert;
         fragmentCode = deband_frag;
@@ -47,11 +47,11 @@ namespace vkBasalt
             .screenHeight        = static_cast<float>(imageExtent.height),
             .reverseScreenWidth  = 1.0F / static_cast<float>(imageExtent.width),
             .reverseScreenHeight = 1.0F / static_cast<float>(imageExtent.height),
-            .debandAvgdiff       = pConfig->getOption<float>("debandAvgdiff", 3.4F),
-            .debandMaxdiff       = pConfig->getOption<float>("debandMaxdiff", 6.8F),
-            .debandMiddiff       = pConfig->getOption<float>("debandMiddiff", 3.3F),
-            .range               = pConfig->getOption<float>("debandRange", 16.0F),
-            .iterations          = pConfig->getOption<int32_t>("debandIterations", 4),
+            .debandAvgdiff       = config.getOption<float>("debandAvgdiff", 3.4F),
+            .debandMaxdiff       = config.getOption<float>("debandMaxdiff", 6.8F),
+            .debandMiddiff       = config.getOption<float>("debandMiddiff", 3.3F),
+            .range               = config.getOption<float>("debandRange", 16.0F),
+            .iterations          = config.getOption<int32_t>("debandIterations", 4),
         };
 
         static_assert(sizeof(int32_t) == sizeof(float));
@@ -74,10 +74,7 @@ namespace vkBasalt
             .pData         = std::addressof(debandOptions),
         };
 
-        pVertexSpecInfo   = nullptr;
-        pFragmentSpecInfo = std::addressof(specializationInfo);
-
-        init(pLogicalDevice, format, imageExtent, inputImages, outputImages, pConfig);
+        init(pLogicalDevice, format, imageExtent, inputImages, outputImages, nullptr, std::addressof(specializationInfo));
     }
 
     DebandEffect::~DebandEffect() = default;

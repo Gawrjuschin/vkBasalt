@@ -1,9 +1,10 @@
 #include "config.hpp"
 
-#include <sstream>
+#include <array>
 #include <fstream>
 #include <locale>
-#include <array>
+#include <sstream>
+#include <vector>
 
 #include <logger.hpp>
 
@@ -104,7 +105,7 @@ namespace vkBasalt
         }
     }
 
-    void Config::parseOption(const std::string& option, int32_t& result)
+    void Config::parseOption(const std::string& option, int32_t& result) const
     {
         auto found = options.find(option);
         if (found != options.end())
@@ -120,7 +121,7 @@ namespace vkBasalt
         }
     }
 
-    void Config::parseOption(const std::string& option, float& result)
+    void Config::parseOption(const std::string& option, float& result) const
     {
         auto found = options.find(option);
         if (found != options.end())
@@ -146,7 +147,7 @@ namespace vkBasalt
         }
     }
 
-    void Config::parseOption(const std::string& option, bool& result)
+    void Config::parseOption(const std::string& option, bool& result) const
     {
         auto found = options.find(option);
         if (found != options.end())
@@ -166,7 +167,7 @@ namespace vkBasalt
         }
     }
 
-    void Config::parseOption(const std::string& option, std::string& result)
+    void Config::parseOption(const std::string& option, std::string& result) const
     {
         auto found = options.find(option);
         if (found != options.end())
@@ -175,7 +176,7 @@ namespace vkBasalt
         }
     }
 
-    void Config::parseOption(const std::string& option, std::vector<std::string>& result)
+    void Config::parseOption(const std::string& option, std::vector<std::string>& result) const
     {
         auto found = options.find(option);
         if (found != options.end())

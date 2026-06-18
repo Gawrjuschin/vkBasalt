@@ -19,7 +19,7 @@ namespace vkBasalt
                      VkExtent2D               imageExtent,
                      std::span<const VkImage> inputImages,
                      std::span<const VkImage> outputImages,
-                     Config*                  pConfig);
+                     const Config&            config);
 
         DebandEffect(const DebandEffect&)            = delete;
         DebandEffect& operator=(const DebandEffect&) = delete;

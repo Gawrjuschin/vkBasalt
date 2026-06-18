@@ -13,10 +13,10 @@ namespace vkBasalt
                          VkExtent2D               imageExtent,
                          std::span<const VkImage> inputImages,
                          std::span<const VkImage> outputImages,
-                         Config*                  pConfig)
+                         const Config&            config)
     {
 
-        const auto sharpness = pConfig->getOption<float>("casSharpness", 0.4F);
+        const auto sharpness = config.getOption<float>("casSharpness", 0.4F);
 
         vertexCode   = full_screen_triangle_vert;
         fragmentCode = cas_frag;
@@ -30,10 +30,7 @@ namespace vkBasalt
         const VkSpecializationInfo fragmentSpecializationInfo{
             .mapEntryCount = 1, .pMapEntries = std::addressof(sharpnessMapEntry), .dataSize = sizeof(float), .pData = std::addressof(sharpness)};
 
-        pVertexSpecInfo   = nullptr;
-        pFragmentSpecInfo = std::addressof(fragmentSpecializationInfo);
-
-        init(pLogicalDevice, format, imageExtent, inputImages, outputImages, pConfig);
+        init(pLogicalDevice, format, imageExtent, inputImages, outputImages, nullptr, std::addressof(fragmentSpecializationInfo));
     }
 
     CasEffect::~CasEffect() = default;
