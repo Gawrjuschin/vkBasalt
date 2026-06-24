@@ -16,10 +16,10 @@ namespace vkBasalt
                          VkExtent2D               imageExtent,
                          std::span<const VkImage> inputImages,
                          std::span<const VkImage> outputImages,
-                         Config*                  pConfig)
+                         const Config&            config)
     {
-        const auto sharpness = pConfig->getOption<float>("dlsSharpness", 0.5F);
-        const auto denoise   = pConfig->getOption<float>("dlsDenoise", 0.17F);
+        const auto sharpness = config.getOption<float>("dlsSharpness", 0.5F);
+        const auto denoise   = config.getOption<float>("dlsDenoise", 0.17F);
 
         const std::array specData{sharpness, denoise};
 
@@ -34,10 +34,7 @@ namespace vkBasalt
                                                               .dataSize      = std::span{specData}.size_bytes(),
                                                               .pData         = std::data(specData)};
 
-        pVertexSpecInfo   = nullptr;
-        pFragmentSpecInfo = std::addressof(fragmentSpecializationInfo);
-
-        init(pLogicalDevice, format, imageExtent, inputImages, outputImages, pConfig);
+        init(pLogicalDevice, format, imageExtent, inputImages, outputImages, nullptr, std::addressof(fragmentSpecializationInfo));
     }
 
     DlsEffect::~DlsEffect() = default;

@@ -21,7 +21,7 @@ namespace vkBasalt
                    VkExtent2D               imageExtent,
                    std::span<const VkImage> inputImages,
                    std::span<const VkImage> outputImages,
-                   Config*                  pConfig);
+                   const Config&            config);
 
         SmaaEffect(const SmaaEffect&)            = delete;
         SmaaEffect& operator=(const SmaaEffect&) = delete;
@@ -69,8 +69,6 @@ namespace vkBasalt
         VkDeviceMemory               areaMemory{};
         VkDeviceMemory               searchMemory{};
         VkSampler                    sampler{};
-
-        Config* pConfig;
     };
 } // namespace vkBasalt
 

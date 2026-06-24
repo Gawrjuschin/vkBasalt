@@ -23,7 +23,7 @@ namespace vkBasalt
         ~Config() = default;
 
         template<typename T>
-        T getOption(const std::string& option, const T& defaultValue = {})
+        T getOption(const std::string& option, const T& defaultValue = {}) const
         {
             T result = defaultValue;
             parseOption(option, result);
@@ -36,11 +36,11 @@ namespace vkBasalt
         void readConfigLine(std::string line);
         void readConfigFile(std::istream& stream);
 
-        void parseOption(const std::string& option, int32_t& result);
-        void parseOption(const std::string& option, float& result);
-        void parseOption(const std::string& option, bool& result);
-        void parseOption(const std::string& option, std::string& result);
-        void parseOption(const std::string& option, std::vector<std::string>& result);
+        void parseOption(const std::string& option, int32_t& result) const;
+        void parseOption(const std::string& option, float& result) const;
+        void parseOption(const std::string& option, bool& result) const;
+        void parseOption(const std::string& option, std::string& result) const;
+        void parseOption(const std::string& option, std::vector<std::string>& result) const;
     };
 } // namespace vkBasalt
 

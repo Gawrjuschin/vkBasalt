@@ -2,7 +2,6 @@
 #define EFFECT_SIMPLE_HPP_INCLUDED
 
 #include "effect.hpp"
-#include "config.hpp"
 #include "logical_device.hpp"
 
 #include <cstdint>
@@ -41,23 +40,20 @@ namespace vkBasalt
         VkPipelineLayout             pipelineLayout{};
         VkPipeline                   graphicsPipeline{};
         VkExtent2D                   imageExtent{};
-        VkFormat                     format{};
         VkSampler                    sampler{};
-        Config*                      pConfig{};
         std::span<const uint32_t>    vertexCode;
         std::span<const uint32_t>    fragmentCode;
-        const VkSpecializationInfo*  pVertexSpecInfo{};
-        const VkSpecializationInfo*  pFragmentSpecInfo{};
 
         // subclasses can put DescriptorSets in here, but the first one will be the input image descriptorSet
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
 
-        void init(LogicalDevice*           pLogicalDevice,
-                  VkFormat                 format,
-                  VkExtent2D               imageExtent,
-                  std::span<const VkImage> inputImages,
-                  std::span<const VkImage> outputImages,
-                  Config*                  pConfig);
+        void init(LogicalDevice*              pLogicalDevice,
+                  VkFormat                    format,
+                  VkExtent2D                  imageExtent,
+                  std::span<const VkImage>    inputImages,
+                  std::span<const VkImage>    outputImages,
+                  const VkSpecializationInfo* pVertexSpecInfo,
+                  const VkSpecializationInfo* pFragmentSpecInfo);
     };
 } // namespace vkBasalt
 

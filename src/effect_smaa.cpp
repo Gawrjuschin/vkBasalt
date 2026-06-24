@@ -52,9 +52,10 @@ namespace vkBasalt
                            VkExtent2D               imageExtent,
                            std::span<const VkImage> inputImages,
                            std::span<const VkImage> outputImages,
-                           Config*                  pConfig) :
+                           const Config&            config) :
         pLogicalDevice{pLogicalDevice}, inputImages(std::cbegin(inputImages), std::cend(inputImages)),
-        outputImages(std::cbegin(outputImages), std::cend(outputImages)), imageExtent{imageExtent}, format{format}, sampler(createSampler(pLogicalDevice)), pConfig{pConfig}
+        outputImages(std::cbegin(outputImages), std::cend(outputImages)), imageExtent{imageExtent}, format{format},
+        sampler(createSampler(pLogicalDevice))
     {
         Logger::debug("in creating SmaaEffect");
 
@@ -120,7 +121,7 @@ namespace vkBasalt
 
         createShaderModule(pLogicalDevice, smaa_edge_vert, std::addressof(edgeVertexModule));
 
-        const auto useColor = pConfig->getOption<std::string>("smaaEdgeDetection", "luma") == "color";
+        const auto useColor = config.getOption<std::string>("smaaEdgeDetection", "luma") == "color";
 
         useColor ? createShaderModule(pLogicalDevice, smaa_edge_color_frag, std::addressof(edgeFragmentModule))
                  : createShaderModule(pLogicalDevice, smaa_edge_luma_frag, std::addressof(edgeFragmentModule));
@@ -142,10 +143,10 @@ namespace vkBasalt
             .screenHeight        = static_cast<float>(imageExtent.height),
             .reverseScreenWidth  = 1.0F / imageExtent.width,
             .reverseScreenHeight = 1.0F / imageExtent.height,
-            .threshold           = pConfig->getOption<float>("smaaThreshold", 0.05F),
-            .maxSearchSteps      = pConfig->getOption<int32_t>("smaaMaxSearchSteps", 32),
-            .maxSearchStepsDiag  = pConfig->getOption<int32_t>("smaaMaxSearchStepsDiag", 16),
-            .cornerRounding      = pConfig->getOption<int32_t>("smaaCornerRounding", 25),
+            .threshold           = config.getOption<float>("smaaThreshold", 0.05F),
+            .maxSearchSteps      = config.getOption<int32_t>("smaaMaxSearchSteps", 32),
+            .maxSearchStepsDiag  = config.getOption<int32_t>("smaaMaxSearchStepsDiag", 16),
+            .cornerRounding      = config.getOption<int32_t>("smaaCornerRounding", 25),
         };
 
         constexpr static auto specMapEntrys{[] {

@@ -30,12 +30,12 @@ namespace vkBasalt
                          VkExtent2D               imageExtent,
                          std::span<const VkImage> inputImages,
                          std::span<const VkImage> outputImages,
-                         Config*                  pConfig)
+                         const Config&            config)
     {
         vertexCode   = full_screen_triangle_vert;
         fragmentCode = lut_frag;
 
-        const auto lutFile = pConfig->getOption<std::string>("lutFile");
+        const auto lutFile = config.getOption<std::string>("lutFile");
 
         int        height{};
         LutCube  lutCube{};
@@ -75,9 +75,6 @@ namespace vkBasalt
                                                               .dataSize      = std::span{specMapEntrys}.size_bytes(),
                                                               .pData         = std::data(specData)};
 
-        pVertexSpecInfo   = nullptr;
-        pFragmentSpecInfo = std::addressof(fragmentSpecializationInfo);
-
         const VkExtent3D lutImageExtent{
             .width = static_cast<uint32_t>(height), .height = static_cast<uint32_t>(height), .depth = static_cast<uint32_t>(height)};
 
@@ -105,7 +102,7 @@ namespace vkBasalt
 
         lutDescriptorPool = createDescriptorPool(pLogicalDevice, std::span{std::addressof(imagePoolSize), 1U});
 
-        init(pLogicalDevice, format, imageExtent, inputImages, outputImages, pConfig);
+        init(pLogicalDevice, format, imageExtent, inputImages, outputImages, nullptr, std::addressof(fragmentSpecializationInfo));
 
         // TODO: better solution for single image view
         lutDescriptorSet =

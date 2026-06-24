@@ -1,6 +1,5 @@
 #include "effect_transfer.hpp"
 #include "logical_device.hpp"
-#include "config.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -16,10 +15,9 @@ namespace vkBasalt
                                    VkFormat                 format,
                                    VkExtent2D               imageExtent,
                                    std::span<const VkImage> inputImages,
-                                   std::span<const VkImage> outputImages,
-                                   Config*                  pConfig) :
+                                   std::span<const VkImage> outputImages) :
         pLogicalDevice{pLogicalDevice}, inputImages(std::cbegin(inputImages), std::cend(inputImages)),
-        outputImages(std::cbegin(outputImages), std::cend(outputImages)), imageExtent{imageExtent}, format{format}, pConfig{pConfig}
+        outputImages(std::cbegin(outputImages), std::cend(outputImages)), imageExtent{imageExtent}, format{format}
     {
     }
 
