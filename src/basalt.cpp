@@ -199,16 +199,13 @@ namespace vkBasalt
             modifiedCreateInfo.pApplicationInfo = std::addressof(appInfo);
             const auto ret                      = createFunc(std::addressof(modifiedCreateInfo), pAllocator, pInstance);
 
-            // fetch our own dispatch table for the functions we need, into the next layer
-            InstanceDispatch dispatchTable;
-            fillDispatchTableInstance(*pInstance, gpa, std::addressof(dispatchTable));
-
             // store the table by key
             {
                 auto&                  state = GlobalState::Get();
                 const std::scoped_lock lock{state.globalLock};
-                state.instanceMap.emplace(GetKey(*pInstance),
-                                          InstanceData{.dispatch = dispatchTable, .version = modifiedCreateInfo.pApplicationInfo->apiVersion});
+                state.instanceMap.emplace(
+                    GetKey(*pInstance),
+                    InstanceData{.dispatch = fillDispatchTableInstance(*pInstance, gpa), .version = modifiedCreateInfo.pApplicationInfo->apiVersion});
             }
 
             return ret;
@@ -336,7 +333,7 @@ namespace vkBasalt
                 return ret;
             }
 
-            LogicalDevice logicalDevice{.vkd                   = {},
+            LogicalDevice logicalDevice{.vkd                   = fillDispatchTableDevice(*pDevice, gdpa),
                                         .vki                   = instanceData.dispatch,
                                         .device                = *pDevice,
                                         .physicalDevice        = physicalDevice,
@@ -348,8 +345,6 @@ namespace vkBasalt
                                         .depthImages           = {},
                                         .depthFormats          = {},
                                         .depthImageViews       = {}};
-
-            fillDispatchTableDevice(*pDevice, gdpa, std::addressof(logicalDevice.vkd));
 
             uint32_t queuePropertiesSize{};
             logicalDevice.vki.GetPhysicalDeviceQueueFamilyProperties(logicalDevice.physicalDevice, std::addressof(queuePropertiesSize), nullptr);
@@ -765,7 +760,7 @@ namespace vkBasalt
 
             if (const auto node = state.swapchainMap.extract(swapchain))
             {
-                node.mapped().destroy();
+                Destroy(node.mapped());
             }
             else
             {

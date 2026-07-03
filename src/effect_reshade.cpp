@@ -265,25 +265,25 @@ namespace vkBasalt
 
             textureImages[texture.unique_name] = {image};
 
-            auto imageView = createImageView(pLogicalDevice,
-                                             convertToUNORM(convertReshadeFormat(texture.format)),
-                                             image,
-                                             VK_IMAGE_VIEW_TYPE_2D,
-                                             VK_IMAGE_ASPECT_COLOR_BIT,
-                                             texture.levels);
+            auto imageViewUniform = createImageView(pLogicalDevice,
+                                                    convertToUNORM(convertReshadeFormat(texture.format)),
+                                                    image,
+                                                    VK_IMAGE_VIEW_TYPE_2D,
+                                                    VK_IMAGE_ASPECT_COLOR_BIT,
+                                                    texture.levels);
 
-            imageView = createImageView(pLogicalDevice,
-                                        convertToSRGB(convertReshadeFormat(texture.format)),
-                                        image,
-                                        VK_IMAGE_VIEW_TYPE_2D,
-                                        VK_IMAGE_ASPECT_COLOR_BIT,
-                                        texture.levels);
+            auto imageViewSRGB = createImageView(pLogicalDevice,
+                                                 convertToSRGB(convertReshadeFormat(texture.format)),
+                                                 image,
+                                                 VK_IMAGE_VIEW_TYPE_2D,
+                                                 VK_IMAGE_ASPECT_COLOR_BIT,
+                                                 texture.levels);
 
-            textureImageViewsUNORM[texture.unique_name].assign(std::size(inputImages), imageView);
-            textureImageViewsSRGB[texture.unique_name].assign(std::size(inputImages), imageView);
+            textureImageViewsUNORM[texture.unique_name].assign(std::size(inputImages), imageViewUniform);
+            textureImageViewsSRGB[texture.unique_name].assign(std::size(inputImages), imageViewSRGB);
 
-            renderImageViewsUNORM[texture.unique_name].assign(std::size(inputImages), imageView);
-            renderImageViewsSRGB[texture.unique_name].assign(std::size(inputImages), imageView);
+            renderImageViewsUNORM[texture.unique_name].assign(std::size(inputImages), imageViewUniform);
+            renderImageViewsSRGB[texture.unique_name].assign(std::size(inputImages), imageViewSRGB);
 
             textureFormatsUNORM[texture.unique_name] = convertToUNORM(convertReshadeFormat(texture.format));
             textureFormatsSRGB[texture.unique_name]  = convertToSRGB(convertReshadeFormat(texture.format));
@@ -314,7 +314,7 @@ namespace vkBasalt
                 default:
                 {
                     Logger::err("unsupported texture upload format" + std::to_string(textureFormatsUNORM[texture.unique_name]));
-                    desiredChannels = 4;
+                    desiredChannels = STBI_rgb_alpha;
                     break;
                 }
             }

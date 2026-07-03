@@ -25,8 +25,6 @@ namespace vkBasalt
                         VkDeviceMemory&       imageMemory,
                         uint32_t              mipLevels)
     {
-        VkImage image{};
-
         const auto unormFormat = isSRGB(format) ? convertToUNORM(format) : format;
         const auto srgbFormat  = isSRGB(format) ? format : convertToSRGB(format);
 
@@ -54,6 +52,7 @@ namespace vkBasalt
             .pQueueFamilyIndices   = nullptr, // Don't care
             .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED};
 
+        VkImage image{};
         {
             const auto result =
                 pLogicalDevice->vkd.CreateImage(pLogicalDevice->device, std::addressof(imageCreateInfo), nullptr, std::addressof(image));
@@ -95,8 +94,6 @@ namespace vkBasalt
                                       VkDeviceMemory&       imageMemory,
                                       uint32_t              mipLevels)
     {
-        std::vector<VkImage> images(count);
-
         const auto unormFormat = isSRGB(format) ? convertToUNORM(format) : format;
         const auto srgbFormat  = isSRGB(format) ? format : convertToSRGB(format);
 
@@ -124,6 +121,7 @@ namespace vkBasalt
             .pQueueFamilyIndices   = nullptr, // Don't care
             .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED};
 
+        std::vector<VkImage> images(count);
         for (auto& image : images)
         {
             const auto result =

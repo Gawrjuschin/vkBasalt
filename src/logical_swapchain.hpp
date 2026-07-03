@@ -7,7 +7,10 @@
 #include <cstdint>
 #include <vector>
 #include <memory>
+
 #include <vulkan/vulkan_core.h>
+
+#include <logger.hpp>
 
 namespace vkBasalt
 {
@@ -27,9 +30,41 @@ namespace vkBasalt
         std::vector<std::unique_ptr<Effect>> effects;
         std::unique_ptr<Effect>              defaultTransfer;
         VkDeviceMemory                       fakeImageMemory;
-
-        void destroy();
     };
+
+    inline void Destroy(LogicalSwapchain& logicalSwapchain)
+    {
+        if (logicalSwapchain.imageCount > 0)
+        {
+            logicalSwapchain.effects.clear();
+            logicalSwapchain.defaultTransfer.reset();
+
+            logicalSwapchain.pLogicalDevice->vkd.FreeCommandBuffers(logicalSwapchain.pLogicalDevice->device,
+                                                                    logicalSwapchain.pLogicalDevice->commandPool,
+                                                                    std::size(logicalSwapchain.commandBuffersEffect),
+                                                                    std::data(logicalSwapchain.commandBuffersEffect));
+            logicalSwapchain.pLogicalDevice->vkd.FreeCommandBuffers(logicalSwapchain.pLogicalDevice->device,
+                                                                    logicalSwapchain.pLogicalDevice->commandPool,
+                                                                    std::size(logicalSwapchain.commandBuffersNoEffect),
+                                                                    std::data(logicalSwapchain.commandBuffersNoEffect));
+            Logger::debug("after free commandbuffer");
+
+            logicalSwapchain.pLogicalDevice->vkd.FreeMemory(logicalSwapchain.pLogicalDevice->device, logicalSwapchain.fakeImageMemory, nullptr);
+
+            for (auto& fakeImage : logicalSwapchain.fakeImages)
+            {
+                logicalSwapchain.pLogicalDevice->vkd.DestroyImage(logicalSwapchain.pLogicalDevice->device, fakeImage, nullptr);
+            }
+
+            for (auto& semaphore : std::span{logicalSwapchain.semaphores}.subspan(0, logicalSwapchain.imageCount))
+            {
+                logicalSwapchain.pLogicalDevice->vkd.DestroySemaphore(logicalSwapchain.pLogicalDevice->device, semaphore, nullptr);
+            }
+
+            Logger::debug("after DestroySemaphore");
+        }
+    }
+
 } // namespace vkBasalt
 
 #endif // LOGICAL_SWAPCHAIN_HPP_INCLUDED

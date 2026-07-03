@@ -1,11 +1,12 @@
 #ifndef SHADER_HPP_INCLUDED
 #define SHADER_HPP_INCLUDED
 
+#include "logical_device.hpp"
+
 #include <span>
 #include <cstdint>
-#include <vulkan/vulkan_core.h>
 
-#include "logical_device.hpp"
+#include <vulkan/vulkan_core.h>
 
 namespace vkBasalt
 {

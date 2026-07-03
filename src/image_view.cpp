@@ -19,7 +19,7 @@ namespace vkBasalt
                                 VkImageAspectFlags aspectMask,
                                 uint32_t           mipLevels)
     {
-        VkImageViewCreateInfo imageViewCreateInfo{
+        const VkImageViewCreateInfo imageViewCreateInfo{
             .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .pNext            = nullptr,
             .flags            = 0,
