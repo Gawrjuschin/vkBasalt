@@ -20,7 +20,7 @@ namespace vkBasalt
     }
 
     template<typename DispatchableType, typename SuperDispatchableType>
-    inline void initializeDispatchTable(DispatchableType dispatchableObject, SuperDispatchableType source)
+    inline void initializeDispatchTable(DispatchableType dispatchableObject, SuperDispatchableType source) noexcept
     {
         *reinterpret_cast<void**>(dispatchableObject) = *reinterpret_cast<void**>(source);
     }

@@ -5,13 +5,14 @@
 #include <memory>
 #include <span>
 
+#include <utility>
 #include <vulkan/vulkan_core.h>
 
 #include <logger.hpp>
 
 namespace vkBasalt
 {
-    VkFormat convertToSRGB(VkFormat format)
+    VkFormat convertToSRGB(VkFormat format) noexcept
     {
         switch (format)
         {
@@ -51,9 +52,10 @@ namespace vkBasalt
             case VK_FORMAT_PVRTC2_4BPP_UNORM_BLOCK_IMG: return VK_FORMAT_PVRTC2_4BPP_SRGB_BLOCK_IMG;
             default: return format;
         }
+        std::unreachable();
     }
 
-    VkFormat convertToUNORM(VkFormat format)
+    VkFormat convertToUNORM(VkFormat format) noexcept
     {
         switch (format)
         {
@@ -91,16 +93,7 @@ namespace vkBasalt
             case VK_FORMAT_PVRTC2_4BPP_SRGB_BLOCK_IMG: return VK_FORMAT_PVRTC2_4BPP_UNORM_BLOCK_IMG;
             default: return format;
         }
-    }
-
-    bool isSRGB(VkFormat format)
-    {
-        return convertToUNORM(format) != format;
-    }
-
-    bool isUNORM(VkFormat format)
-    {
-        return convertToSRGB(format) != format;
+        std::unreachable();
     }
 
     VkFormat getSupportedFormat(LogicalDevice* pLogicalDevice, std::span<const VkFormat> formats, VkFormatFeatureFlags features, VkImageTiling tiling)
@@ -109,11 +102,7 @@ namespace vkBasalt
         {
             VkFormatProperties properties;
             pLogicalDevice->vki.GetPhysicalDeviceFormatProperties(pLogicalDevice->physicalDevice, format, std::addressof(properties));
-            if ((properties.optimalTilingFeatures & features) == features && tiling == VK_IMAGE_TILING_OPTIMAL)
-            {
-                return format;
-            }
-            if ((properties.linearTilingFeatures & features) == features && tiling == VK_IMAGE_TILING_LINEAR)
+            if ((properties.optimalTilingFeatures & features) == features && (tiling == VK_IMAGE_TILING_OPTIMAL || tiling == VK_IMAGE_TILING_LINEAR))
             {
                 return format;
             }
@@ -122,13 +111,13 @@ namespace vkBasalt
         return VK_FORMAT_UNDEFINED;
     }
 
-    VkFormat getStencilFormat(LogicalDevice* pLogicalDevice)
+    VkFormat getStencilFormat(LogicalDevice* pLogicalDevice) noexcept
     {
         constexpr static std::array stencilFormats{VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D32_SFLOAT_S8_UINT};
         return getSupportedFormat(pLogicalDevice, stencilFormats, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
     }
 
-    bool isDepthFormat(VkFormat format)
+    bool isDepthFormat(VkFormat format) noexcept
     {
         switch (format)
         {
@@ -140,9 +129,10 @@ namespace vkBasalt
             case VK_FORMAT_D32_SFLOAT_S8_UINT: return true;
             default: return false;
         }
+        std::unreachable();
     }
 
-    bool isStencilFormat(VkFormat format)
+    bool isStencilFormat(VkFormat format) noexcept
     {
         switch (format)
         {
@@ -152,5 +142,6 @@ namespace vkBasalt
             case VK_FORMAT_D32_SFLOAT_S8_UINT: return true;
             default: return false;
         }
+        std::unreachable();
     }
 } // namespace vkBasalt

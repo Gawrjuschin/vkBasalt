@@ -2,7 +2,6 @@
 #define VK_INSTANCE_FUNCS \
     FORVKFUNC(DestroyInstance) \
     FORVKFUNC(EnumerateDeviceExtensionProperties) \
-    FORVKFUNC(GetInstanceProcAddr) \
     FORVKFUNC(GetPhysicalDeviceFormatProperties) \
     FORVKFUNC(GetPhysicalDeviceMemoryProperties) \
     FORVKFUNC(GetPhysicalDeviceQueueFamilyProperties) \
@@ -57,7 +56,6 @@
     FORVKFUNC(FreeCommandBuffers) \
     FORVKFUNC(FreeMemory) \
     FORVKFUNC(GetBufferMemoryRequirements) \
-    FORVKFUNC(GetDeviceProcAddr) \
     FORVKFUNC(GetDeviceQueue) \
     FORVKFUNC(GetDeviceQueue2) \
     FORVKFUNC(GetImageMemoryRequirements) \

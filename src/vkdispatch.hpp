@@ -5,27 +5,40 @@
 
 #include <vulkan/vulkan_core.h>
 
-#define FORVKFUNC(func) PFN_vk##func func = nullptr;
-
 namespace vkBasalt
 {
 
+#define FORVKFUNC(func) PFN_vk##func func = nullptr;
     struct InstanceDispatch
     {
+        FORVKFUNC(GetInstanceProcAddr)
         VK_INSTANCE_FUNCS
     };
 
     struct DeviceDispatch
     {
+        FORVKFUNC(GetDeviceProcAddr)
         VK_DEVICE_FUNCS
     };
+#undef FORVKFUNC
 
-    void fillDispatchTableInstance(VkInstance instance, PFN_vkGetInstanceProcAddr gipa, InstanceDispatch* table);
-    void fillDispatchTableDevice(VkDevice device, PFN_vkGetDeviceProcAddr gdpa, DeviceDispatch* table);
+    // fetch our own dispatch table for the functions we need, into the next layer
+    inline InstanceDispatch fillDispatchTableInstance(VkInstance instance, PFN_vkGetInstanceProcAddr gipa) noexcept
+    {
+#define FORVKFUNC(func) .func = (PFN_vk##func) gipa(instance, "vk" #func),
+        return {.GetInstanceProcAddr = gipa, VK_INSTANCE_FUNCS};
+#undef FORVKFUNC
+    }
+
+    inline DeviceDispatch fillDispatchTableDevice(VkDevice device, PFN_vkGetDeviceProcAddr gdpa) noexcept
+    {
+#define FORVKFUNC(func) .func = (PFN_vk##func) gdpa(device, "vk" #func),
+        return {.GetDeviceProcAddr = gdpa, VK_DEVICE_FUNCS};
+#undef FORVKFUNC
+    }
 
 } // namespace vkBasalt
 
-#undef FORVKFUNC
 #undef VK_INSTANCE_FUNCS
 #undef VK_DEVICE_FUNCS
 
