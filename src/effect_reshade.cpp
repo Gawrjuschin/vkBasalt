@@ -849,11 +849,6 @@ namespace vkBasalt
             }
         }
 
-        auto isDepthTextureName = [&depthTextureNames](auto&& pair) {
-            auto&& [samplerIndex, texture_name, sampler] = pair;
-            return std::ranges::contains(depthTextureNames, texture_name);
-        };
-
         for (auto [infoIndex, info] : module.samplers | std::views::enumerate)
         {
             if (std::ranges::contains(depthTextureNames, info.texture_name))
