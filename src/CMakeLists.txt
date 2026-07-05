@@ -11,7 +11,8 @@ add_subdirectory(logger/)
 # ===============================================================================
 # Main library (VkLayer)
 # ===============================================================================
-add_library(vkBasalt_vkBasalt SHARED)
+add_library(vkBasalt_vkBasalt SHARED
+  layer_state.hpp layer_state.cpp)
 add_library(vkBasalt::vkBasalt ALIAS vkBasalt_vkBasalt)
 
 # Config with default paths based on CMake install variables
